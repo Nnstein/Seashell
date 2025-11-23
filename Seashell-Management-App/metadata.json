@@ -1,0 +1,5 @@
+{
+  "name": "Presto coffeee and more order manager",
+  "description": "Admin dashboard for Seashell Resort Room Service. Manage orders, update menu items with AI assistance, and track kitchen workflow.",
+  "requestFramePermissions": []
+}
