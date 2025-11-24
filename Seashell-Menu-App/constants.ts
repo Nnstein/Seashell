@@ -1,0 +1,21 @@
+export const CATEGORIES = [
+    'Hot Beverages',
+    'Frappes',
+    'Smoothies',
+    'Milkshakes',
+    'Hot Chocolates',
+    'Fresh Juices',
+    'Specialty Coffee',
+    'Cold Beverages',
+    'Cocktails',
+    'Malt Beverages',
+    'Refreshing Drinks',
+    'Appetizers',
+    'Italian Pasta',
+    'Soups',
+    'Salads',
+    'Risotto',
+    'Pizzeria Chez Nous',
+    'Main Course',
+    'Sweets and Fruits'
+];

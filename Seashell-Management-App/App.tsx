@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Order, MenuItem, OrderStatus } from './types';
-import { getMenu, saveMenu } from './services/storageService';
+import { User, Order, MenuItem, OrderStatus } from './src/types';
+import { getMenuItems } from './services/firestoreService';
 import { useOrders } from './context/OrdersContext';
 import Dashboard from './components/Dashboard';
 import MenuEditor from './components/MenuEditor';
@@ -13,13 +13,15 @@ const App: React.FC = () => {
   const { orders, loading, updateOrderStatus } = useOrders();
   const [menu, setMenu] = useState<MenuItem[]>([]);
 
-  // Simulate initial data load
+  // Load data from Firestore
   useEffect(() => {
-    const loadData = () => {
-      setMenu(getMenu());
-    };
-    loadData();
+    loadMenu();
   }, []);
+
+  const loadMenu = async () => {
+    const menuItems = await getMenuItems();
+    setMenu(menuItems);
+  };
 
   const handleLogin = (username: string) => {
     setUser({ username, role: 'admin' });
@@ -29,9 +31,8 @@ const App: React.FC = () => {
     updateOrderStatus(id, status);
   };
 
-  const handleSaveMenu = (newMenu: MenuItem[]) => {
-    saveMenu(newMenu);
-    setMenu(newMenu);
+  const handleMenuUpdate = () => {
+    loadMenu();
   };
 
   if (!user) {
@@ -102,13 +103,13 @@ const App: React.FC = () => {
           <button onClick={() => setUser(null)}><LogOut size={20} /></button>
         </header>
 
-        <div className="flex-1 overflow-y-auto bg-paper">
+        <div className="flex-1 overflow-hidden bg-paper">
           <div className="h-full max-w-full">
             {activeTab === 'dashboard' && (
               <Dashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
             )}
             {activeTab === 'menu' && (
-              <MenuEditor menu={menu} onSave={handleSaveMenu} />
+              <MenuEditor menu={menu} onUpdate={handleMenuUpdate} />
             )}
           </div>
         </div>

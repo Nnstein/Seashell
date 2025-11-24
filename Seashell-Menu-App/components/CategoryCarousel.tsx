@@ -1,9 +1,16 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Category, Language } from '../types';
+import { Language } from '../src/types';
+
+// Define a simpler Category interface for the carousel if not using the full one
+interface CarouselCategory {
+  id: string;
+  name: { [key in Language]: string };
+  image: string;
+}
 
 interface CategoryCarouselProps {
-  categories: Category[];
+  categories: CarouselCategory[] | string[]; // Allow simple strings or objects
   activeCategory: string;
   onSelectCategory: (id: string) => void;
   language: Language;
@@ -12,6 +19,18 @@ interface CategoryCarouselProps {
 const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeCategory, onSelectCategory, language }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isRTL = language === 'ar';
+
+  // Normalize categories to objects if they are strings
+  const normalizedCategories: CarouselCategory[] = React.useMemo(() => {
+    if (categories.length > 0 && typeof categories[0] === 'string') {
+      return (categories as string[]).map(cat => ({
+        id: cat,
+        name: { en: cat, ar: cat }, // Placeholder for translation
+        image: `https://source.unsplash.com/featured/?food,${cat}` // Placeholder image
+      }));
+    }
+    return categories as CarouselCategory[];
+  }, [categories]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -28,7 +47,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeC
   };
 
   return (
-    <div className="relative group my-2 sm:my-4" dir="ltr"> 
+    <div className="relative group my-2 sm:my-4" dir="ltr">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 relative">
         <button
           onClick={() => scroll('left')}
@@ -42,7 +61,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeC
           className={`flex gap-3 sm:gap-6 overflow-x-auto pb-4 sm:pb-12 pt-4 sm:pt-8 scrollbar-hide snap-x snap-mandatory px-2 sm:px-4 ${isRTL ? 'flex-row-reverse' : ''}`}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {categories.map((cat) => {
+          {normalizedCategories.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
               <button
@@ -56,29 +75,29 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeC
                 dir={isRTL ? 'rtl' : 'ltr'}
               >
                 {/* Background Image - Always visible */}
-                <img 
-                  src={cat.image} 
-                  alt={cat.name[language]} 
+                <img
+                  src={cat.image}
+                  alt={cat.name[language]}
                   className={`
                     absolute inset-0 w-full h-full object-cover transition-transform duration-700
                     ${isActive ? 'scale-110' : 'scale-100 group-hover/card:scale-110'}
                   `}
                 />
-                
+
                 {/* Gradient Overlay for readability */}
                 <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-70 group-hover/card:opacity-60'}`}></div>
 
                 {/* Content Content */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-1 sm:p-2 transition-all duration-300">
-                   <span className={`
+                  <span className={`
                      font-serif text-xs sm:text-xl font-bold text-center z-10 transition-all duration-300 drop-shadow-md leading-tight
                      ${isActive ? 'text-gold translate-y-0' : 'text-white translate-y-1 sm:translate-y-2 group-hover/card:translate-y-0'}
                    `}>
-                     {cat.name[language]}
-                   </span>
-                   
-                   {/* Active Indicator Line */}
-                   <div className={`h-0.5 bg-gold mt-1 sm:mt-2 rounded-full transition-all duration-500 ${isActive ? 'w-8 sm:w-12 opacity-100' : 'w-0 opacity-0 group-hover/card:w-8 group-hover/card:opacity-100'}`}></div>
+                    {cat.name[language]}
+                  </span>
+
+                  {/* Active Indicator Line */}
+                  <div className={`h-0.5 bg-gold mt-1 sm:mt-2 rounded-full transition-all duration-500 ${isActive ? 'w-8 sm:w-12 opacity-100' : 'w-0 opacity-0 group-hover/card:w-8 group-hover/card:opacity-100'}`}></div>
                 </div>
 
                 {/* Active Glow */}

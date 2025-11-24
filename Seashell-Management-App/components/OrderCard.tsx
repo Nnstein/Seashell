@@ -1,5 +1,5 @@
 import React from 'react';
-import { Order } from '../types';
+import { Order } from '../src/types';
 import { Clock, MapPin, CheckCircle, ChefHat, Truck } from 'lucide-react';
 
 interface OrderCardProps {
@@ -46,19 +46,19 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
           <Clock size={12} className="mr-1" />
           {timeAgo(orderTime)}
         </div>
-        <div className="font-serif font-bold text-lg text-ink">${order.total.toFixed(3)}</div>
+        <div className="font-serif font-bold text-lg text-ink">${order.totalAmount.toFixed(2)}</div>
       </div>
 
       <div className="mb-4 pl-2 pb-4 border-b border-dashed border-slate-200">
-        <div className="font-serif text-xl font-bold text-ink mb-1">Guest</div>
+        <div className="font-serif text-xl font-bold text-ink mb-1">{order.guestName || 'Guest'}</div>
         <div className="flex items-center text-slate-500 text-sm font-medium mb-1">
           <MapPin size={14} className="mr-1 text-gold" />
           Room {order.roomNumber}
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${order.paymentMethod === 'card'
-              ? 'bg-purple-50 text-purple-700 border-purple-200'
-              : 'bg-amber-50 text-amber-700 border-amber-200'
+            ? 'bg-purple-50 text-purple-700 border-purple-200'
+            : 'bg-amber-50 text-amber-700 border-amber-200'
             }`}>
             {order.paymentMethod === 'card' ? 'Card Payment' : 'Room Charge'}
           </span>
@@ -66,11 +66,18 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
       </div>
 
       <div className="pl-2 space-y-2 mb-4">
-        {order.items.map((item, idx) => (
-          <div key={idx} className="flex justify-between items-start text-sm text-slate-700">
-            <span className="font-medium"><span className="text-ink font-bold mr-1">{item.quantity}x</span> {item.name.en}</span>
-          </div>
-        ))}
+        {order.items.map((item, idx) => {
+          // Handle potential legacy localized name object
+          const itemName = typeof item.name === 'object' && item.name !== null
+            ? (item.name as any)['en'] || 'Unknown Item'
+            : item.name;
+
+          return (
+            <div key={idx} className="flex justify-between items-start text-sm text-slate-700">
+              <span className="font-medium"><span className="text-ink font-bold mr-1">{item.quantity}x</span> {itemName}</span>
+            </div>
+          );
+        })}
       </div>
 
       {order.notes && (

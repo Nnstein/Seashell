@@ -1,29 +1,40 @@
 import React, { useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { MENU_DATA } from '../data';
 import Hero from '../components/Hero';
+
 import CategoryCarousel from '../components/CategoryCarousel';
 import MenuItemCard from '../components/MenuItemCard';
+import { CATEGORIES } from '../constants';
 
 const MenuView: React.FC = () => {
-  const { activeCategory, setActiveCategory, language, addToCart } = useApp();
-  
-  const currentCategoryData = useMemo(() => 
-    MENU_DATA.find(cat => cat.id === activeCategory) || MENU_DATA[0], 
-  [activeCategory]);
+  const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu } = useApp();
+
+  // Filter items by active category
+  const currentItems = useMemo(() =>
+    menuItems.filter(item => item.category === activeCategory && item.isAvailable),
+    [menuItems, activeCategory]);
+
+  // Get category details for theme/display
+  // If CATEGORIES are not in data.ts, we might need to define them or fetch them
+  // For now, let's assume we can get basic info or fallback
+  const currentCategoryName = activeCategory;
+
+  if (loadingMenu) {
+    return <div className="flex justify-center items-center h-screen">Loading menu...</div>;
+  }
 
   return (
     <div className="pb-20">
-      <Hero 
-        activeCategoryName={currentCategoryData.name[language]} 
-        theme={currentCategoryData.theme} 
-        language={language} 
+      <Hero
+        activeCategoryName={currentCategoryName}
+        theme="light" // Default theme or derive from category
+        language={language}
       />
-      
+
       <section className="pb-2 px-2 sm:pb-4 sm:px-4 relative z-30 -mt-4 sm:-mt-4">
-        <CategoryCarousel 
-          categories={MENU_DATA} 
-          activeCategory={activeCategory} 
+        <CategoryCarousel
+          categories={CATEGORIES}
+          activeCategory={activeCategory}
           onSelectCategory={setActiveCategory}
           language={language}
         />
@@ -31,15 +42,20 @@ const MenuView: React.FC = () => {
 
       <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 sm:pt-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 animate-fade-in-up">
-          {currentCategoryData.items.map((item) => (
-            <MenuItemCard 
-              key={item.id} 
-              item={item} 
+          {currentItems.map((item) => (
+            <MenuItemCard
+              key={item.id}
+              item={item}
               onAdd={addToCart}
-              theme={currentCategoryData.theme}
+              theme="light"
               language={language}
             />
           ))}
+          {currentItems.length === 0 && (
+            <div className="col-span-full text-center py-10 text-slate-500">
+              No items available in this category.
+            </div>
+          )}
         </div>
       </section>
     </div>

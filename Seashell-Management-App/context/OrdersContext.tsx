@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { collection, onSnapshot, doc, updateDoc, orderBy, query, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus } from '../src/types';
 
 // Removed local interfaces to use shared types
 
@@ -23,10 +23,21 @@ export const OrdersProvider = ({ children }: { children: ReactNode }) => {
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             console.log("DEBUG: Snapshot received. Docs count:", snapshot.docs.length);
-            const ordersData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Order[];
+            const ordersData = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    // Handle legacy field mapping
+                    totalAmount: data.totalAmount ?? data.total ?? 0,
+                    // Ensure other required fields have defaults if missing
+                    paymentMethod: data.paymentMethod || 'room_charge',
+                    items: data.items || [],
+                    status: data.status || 'pending',
+                    roomNumber: data.roomNumber || 'Unknown',
+                    guestName: data.guestName || 'Guest'
+                } as Order;
+            });
             console.log("DEBUG: Parsed orders:", ordersData);
             setOrders(ordersData);
             setLoading(false);

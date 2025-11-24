@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus } from '../src/types';
 import OrderCard from './OrderCard';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell, XAxis } from 'recharts';
 import { LayoutGrid, List, ShoppingBag, Clock } from 'lucide-react';
+
+
 
 interface DashboardProps {
     orders: Order[];
@@ -178,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                 <td className="px-6 py-4 font-bold text-ink">#{order.id.slice(0, 6)}</td>
                                                 <td className="px-6 py-4 text-slate-500">{new Date(getTime(order)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                                 <td className="px-6 py-4 font-medium text-ink">
-                                                    <div>Guest</div>
+                                                    <div>{order.guestName || 'Guest'}</div>
                                                     <div className="text-xs text-slate-400 mb-1">Rm {order.roomNumber}</div>
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${order.paymentMethod === 'card'
                                                         ? 'bg-purple-50 text-purple-700 border-purple-200'
@@ -189,10 +191,12 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                 </td>
                                                 <td className="px-6 py-4 text-slate-600">
                                                     {order.items.map((item, i) => (
-                                                        <div key={i} className="mb-1"><span className="font-bold text-ink">{item.quantity}x</span> {item.name.en}</div>
+                                                        <div key={i} className="mb-1">
+                                                            <span className="font-bold text-ink">{item.quantity}x</span> {typeof item.name === 'object' ? (item.name as any).en : item.name}
+                                                        </div>
                                                     ))}
                                                 </td>
-                                                <td className="px-6 py-4 font-serif font-bold text-ink">${order.total.toFixed(3)}</td>
+                                                <td className="px-6 py-4 font-serif font-bold text-ink">${order.totalAmount.toFixed(2)}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex px-3 py-1 text-xs font-bold tracking-wider uppercase border
                                             ${order.status === 'pending' ? 'bg-blue-50 text-blue-800 border-blue-100' : ''}

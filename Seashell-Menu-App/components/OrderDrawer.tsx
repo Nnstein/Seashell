@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Home } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Home, Loader2 } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
+import { CartItem } from '../context/AppContext';
 
 interface OrderDrawerProps {
   // Props are now optional or removed in favor of context
@@ -13,6 +14,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
     setIsCartOpen,
     cart,
     updateQuantity,
+    updateInstructions,
     removeFromCart,
     handleCheckout,
     language,
@@ -23,6 +25,24 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const isRTL = language === 'ar';
   const [paymentMethod, setPaymentMethod] = React.useState<'room_charge' | 'card'>('room_charge');
+
+  const getName = (item: CartItem) => {
+    if (typeof item.name === 'object' && item.name !== null) {
+      return (item.name as any)[language] || (item.name as any)['en'] || '';
+    }
+    return item.name;
+  };
+
+  const getDescription = (item: CartItem) => {
+    if (typeof item.description === 'object' && item.description !== null) {
+      return (item.description as any)[language] || (item.description as any)['en'] || '';
+    }
+    return item.description;
+  };
+
+  const getImage = (item: CartItem) => {
+    return item.imageUrl || item.image || `https://source.unsplash.com/featured/?food,${item.category}`;
+  };
 
   return (
     <>
@@ -75,14 +95,43 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                 {cart.map((item) => (
                   <div key={item.cartId} className="flex gap-4 items-start group animate-fade-in bg-white p-3 rounded-xl border border-stone-100 shadow-sm">
                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-stone-200 flex-shrink-0 shadow-sm">
-                      <img src={item.image} alt={item.name[language]} className="w-full h-full object-cover" />
+                      <img src={getImage(item)} alt={getName(item)} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-grow">
                       <div className="flex justify-between items-start">
-                        <h3 className="font-serif text-lg font-bold text-stone-800 leading-tight">{item.name[language]}</h3>
+                        <h3 className="font-serif text-lg font-bold text-stone-800 leading-tight">{getName(item)}</h3>
                         <p className={`font-sans font-bold text-stone-900 ${isRTL ? 'mr-2' : 'ml-2'}`}>{(item.price * item.quantity).toFixed(3)}</p>
                       </div>
-                      <p className="font-sans text-xs text-stone-500 mb-3 truncate max-w-[180px]">{item.description ? item.description[language] : ''}</p>
+                      <p className="font-sans text-xs text-stone-500 mb-1 truncate max-w-[180px]">{getDescription(item)}</p>
+
+                      {/* Customizations Display */}
+                      {(item.selectedSize || (item.selectedAddons && item.selectedAddons.length > 0)) && (
+                        <div className="mb-2 text-xs text-stone-600 bg-stone-50 p-2 rounded border border-stone-100">
+                          {item.selectedSize && (
+                            <div className="flex gap-1">
+                              <span className="font-bold">Size:</span>
+                              <span>{item.selectedSize}</span>
+                            </div>
+                          )}
+                          {item.selectedAddons && item.selectedAddons.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              <span className="font-bold">Add-ons:</span>
+                              <span>{item.selectedAddons.join(', ')}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Special Instructions */}
+                      <div className="mb-3">
+                        <textarea
+                          placeholder={language === 'ar' ? 'تعليمات خاصة...' : 'Special instructions...'}
+                          value={item.specialInstructions || ''}
+                          onChange={(e) => updateInstructions(item.cartId, e.target.value)}
+                          className="w-full text-xs p-2 border border-stone-200 rounded bg-white focus:border-gold focus:ring-0 outline-none resize-none"
+                          rows={2}
+                        />
+                      </div>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center bg-stone-100 rounded-lg h-8">
@@ -166,6 +215,10 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                 </div>
               </div>
 
+
+
+              {/* ... inside component ... */}
+
               <button
                 type="button"
                 onClick={(e) => {
@@ -176,7 +229,13 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                 disabled={isPlacingOrder}
                 className={`w-full bg-stone-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg hover:bg-gold hover:text-white hover:shadow-gold/20 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 ${isPlacingOrder ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {isPlacingOrder ? 'Placing Order...' : UI_TEXT.placeOrder[language]} {isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                {isPlacingOrder ? (
+                  <Loader2 className="animate-spin" size={24} />
+                ) : (
+                  <>
+                    {UI_TEXT.placeOrder[language]} {isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                  </>
+                )}
               </button>
             </div>
           )}
