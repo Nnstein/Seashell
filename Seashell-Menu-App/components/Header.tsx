@@ -14,13 +14,13 @@ const Header: React.FC<HeaderProps> = ({ theme }) => {
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-40 transition-all duration-500 pt-2 sm:pt-4 px-2 sm:px-4">
-      <div className="max-w-7xl mx-auto backdrop-blur-md bg-black/30 border border-white/10 rounded-xl sm:rounded-2xl px-4 sm:px-8 h-16 sm:h-20 flex items-center justify-between shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-40 transition-all duration-500 pt-2 sm:pt-4 px-2 sm:px-4 pointer-events-none">
+      <div className="max-w-7xl mx-auto pointer-events-auto backdrop-blur-md bg-black/30 border border-white/10 rounded-xl sm:rounded-2xl px-4 sm:px-8 h-16 sm:h-20 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3 sm:gap-4">
           {view === 'CONFIRMATION' && (
-             <button onClick={() => setView('HOME')} className="p-2 rounded-full hover:bg-white/20 text-white transition-colors">
-               {isRTL ? <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />}
-             </button>
+            <button onClick={() => setView('HOME')} className="p-2 rounded-full hover:bg-white/20 text-white transition-colors">
+              {isRTL ? <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />}
+            </button>
           )}
           <div className="cursor-pointer group text-center sm:text-left" onClick={() => setView('HOME')}>
             <h1 className="font-serif text-xl sm:text-3xl font-bold tracking-tight text-white group-hover:text-gold transition-colors duration-300 drop-shadow-md">PRESTO</h1>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, PropsWithChildren } from 'react';
 import { getAvailableMenuItems, placeOrder, getMenuSettings } from '../services/firestoreService';
 import { Language, MenuItem, ViewState } from '../src/types';
+import { useCategoryImages } from '../hooks/useCategoryImages';
 
 // Define CartItem locally as it extends MenuItem with quantity
 export interface CartItem extends MenuItem {
@@ -36,6 +37,9 @@ interface AppState {
   menuItems: MenuItem[];
   loadingMenu: boolean;
   activeSeason: 'Summer' | 'Winter';
+  categoryImages: Record<string, string>;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -53,6 +57,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Use the hook for dynamic images
+  const categoryImages = useCategoryImages();
 
   // Load Menu from Firestore
   useEffect(() => {
@@ -212,7 +220,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       clearCart,
       isPlacingOrder,
       menuItems,
-      loadingMenu
+      loadingMenu,
+      activeSeason,
+      categoryImages,
+      searchQuery,
+      setSearchQuery
     }}>
       {children}
     </AppContext.Provider>

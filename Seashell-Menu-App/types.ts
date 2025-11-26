@@ -28,6 +28,16 @@ export interface Category {
   items: MenuItem[];
 }
 
+export interface CategoryData {
+  id: string;
+  name: LocalizedString;
+  image: string;
+  images: string[]; // Dynamic images
+  video: string;
+  theme: Theme;
+  items: MenuItem[];
+}
+
 export interface CartItem extends MenuItem {
   cartId: string; // Unique ID for the instance in cart
   quantity: number;

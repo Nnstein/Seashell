@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Order, OrderStatus } from '../src/types';
 import OrderCard from './OrderCard';
+import SearchBar from './SearchBar';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell, XAxis } from 'recharts';
 import { LayoutGrid, List, ShoppingBag, Clock } from 'lucide-react';
 
@@ -13,6 +14,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
     const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Calculate Stats
     const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
@@ -48,10 +50,37 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
 
     // Helper to get time safely
     const getTime = (order: Order) => {
-        return order.createdAt?.seconds ? order.createdAt.seconds * 1000 : Date.now();
+        // Handle both Firestore Timestamp and regular number
+        if (typeof order.createdAt === 'object' && order.createdAt && 'seconds' in order.createdAt) {
+            return (order.createdAt as any).seconds * 1000;
+        }
+        return typeof order.createdAt === 'number' ? order.createdAt : Date.now();
     };
 
-    const sortedOrders = [...orders].sort((a, b) => getTime(b) - getTime(a));
+    // Filter orders based on search query
+    const filteredOrders = orders.filter(order => {
+        if (!searchQuery.trim()) return true;
+
+        const query = searchQuery.toLowerCase();
+        const roomNumber = order.roomNumber.toLowerCase();
+        const guestName = (order.guestName || '').toLowerCase();
+        const orderId = order.id.toLowerCase();
+
+        // Check if any item name matches
+        const itemsMatch = order.items.some(item => {
+            const itemName = typeof item.name === 'object' ? item.name.en : item.name;
+            return itemName.toLowerCase().includes(query);
+        });
+
+        return (
+            roomNumber.includes(query) ||
+            guestName.includes(query) ||
+            orderId.includes(query) ||
+            itemsMatch
+        );
+    });
+
+    const sortedOrders = [...filteredOrders].sort((a, b) => getTime(b) - getTime(a));
 
     return (
         <div className="h-full flex flex-col space-y-6 p-6 md:p-8">
@@ -85,43 +114,52 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                 </div>
             </div>
 
+            {/* Search Bar */}
+            <div className="max-w-xl">
+                <SearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search by room, guest, order ID, or item..."
+                />
+            </div>
+
             {/* Stats Counters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-2 md:gap-6">
                 {/* Active Orders (New) */}
-                <div className="bg-white p-6 shadow-sm border-t-4 border-blue-500 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ShoppingBag size={64} />
+                <div className="bg-white p-3 md:p-6 shadow-sm border-t-2 md:border-t-4 border-blue-500 relative overflow-hidden group rounded-lg">
+                    <div className="absolute right-0 top-0 p-2 md:p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <ShoppingBag className="w-8 h-8 md:w-16 md:h-16" />
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Active Orders</p>
-                    <div className="flex items-baseline">
-                        <h3 className="text-4xl font-serif font-bold text-ink">{orders.filter(o => o.status === 'pending').length}</h3>
-                        <span className="ml-2 text-sm text-slate-400">New</span>
+                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5 md:mb-1 truncate">Active</p>
+                    <div className="flex flex-col md:flex-row md:items-baseline">
+                        <h3 className="text-2xl md:text-4xl font-serif font-bold text-ink">{filteredOrders.filter(o => o.status === 'pending').length}</h3>
+                        <span className="hidden md:inline ml-2 text-sm text-slate-400">New</span>
                     </div>
                 </div>
 
                 {/* Processing (In Kitchen + Ready + Delivered) */}
-                <div className="bg-white p-6 shadow-sm border-t-4 border-amber-500 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Clock size={64} />
+                <div className="bg-white p-3 md:p-6 shadow-sm border-t-2 md:border-t-4 border-amber-500 relative overflow-hidden group rounded-lg">
+                    <div className="absolute right-0 top-0 p-2 md:p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Clock className="w-8 h-8 md:w-16 md:h-16" />
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Processing</p>
-                    <div className="flex items-baseline">
-                        <h3 className="text-4xl font-serif font-bold text-ink">
-                            {orders.filter(o => ['preparing', 'ready', 'delivered'].includes(o.status)).length}
+                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5 md:mb-1 truncate">Process</p>
+                    <div className="flex flex-col md:flex-row md:items-baseline">
+                        <h3 className="text-2xl md:text-4xl font-serif font-bold text-ink">
+                            {filteredOrders.filter(o => ['preparing', 'ready', 'delivered'].includes(o.status)).length}
                         </h3>
-                        <span className="ml-2 text-sm text-slate-400">In Progress</span>
+                        <span className="hidden md:inline ml-2 text-sm text-slate-400">In Progress</span>
                     </div>
                 </div>
 
                 {/* Completed */}
-                <div className="bg-white p-6 shadow-sm border-t-4 border-slate-800 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <LayoutGrid size={64} />
+                <div className="bg-white p-3 md:p-6 shadow-sm border-t-2 md:border-t-4 border-slate-800 relative overflow-hidden group rounded-lg">
+                    <div className="absolute right-0 top-0 p-2 md:p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <LayoutGrid className="w-8 h-8 md:w-16 md:h-16" />
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Completed</p>
-                    <div className="flex items-baseline">
-                        <h3 className="text-4xl font-serif font-bold text-ink">{orders.filter(o => o.status === 'completed').length}</h3>
-                        <span className="ml-2 text-sm text-slate-400">Total</span>
+                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-slate-400 mb-0.5 md:mb-1 truncate">Done</p>
+                    <div className="flex flex-col md:flex-row md:items-baseline">
+                        <h3 className="text-2xl md:text-4xl font-serif font-bold text-ink">{filteredOrders.filter(o => o.status === 'completed').length}</h3>
+                        <span className="hidden md:inline ml-2 text-sm text-slate-400">Total</span>
                     </div>
                 </div>
             </div>
@@ -139,15 +177,15 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                         </span>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-4 scrollbar-hide notebook-paper rounded-lg p-2">
-                                        {orders
+                                    <div className="flex-1 overflow-y-auto pr-2 pb-4 space-y-4 scrollbar-hide notebook-paper rounded-lg p-2 overscroll-contain">
+                                        {filteredOrders
                                             .filter(o => o.status === col.status)
                                             .sort((a, b) => getTime(b) - getTime(a))
                                             .map(order => (
                                                 <OrderCard key={order.id} order={order} onUpdateStatus={onUpdateStatus} />
                                             ))
                                         }
-                                        {orders.filter(o => o.status === col.status).length === 0 && (
+                                        {filteredOrders.filter(o => o.status === col.status).length === 0 && (
                                             <div className="h-20 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg m-2">
                                                 <span className="text-slate-400 font-serif italic text-sm">No orders</span>
                                             </div>
@@ -159,7 +197,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                     </div>
                 ) : (
                     <div className="bg-white shadow-sm overflow-hidden border-t-4 border-ink h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="overflow-y-auto flex-1">
+                        <div className="overflow-y-auto flex-1 overscroll-contain">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-sand text-ink font-serif border-b border-slate-200 sticky top-0 z-10">
                                     <tr>

@@ -1,4 +1,4 @@
-import { Category, LocalizedString } from './types';
+import { Category, LocalizedString, CategoryData } from './types';
 
 // Helper to generate image URLs
 const getImg = (id: number) => `https://picsum.photos/400/300?random=${id}`;
@@ -13,7 +13,7 @@ export const UI_TEXT = {
   roomNumber: { en: "Room Number", ar: "رقم الغرفة" },
   myOrder: { en: "My Order", ar: "طلباتي" },
   items: { en: "items", ar: "عناصر" },
-  total: { en: "Total", ar: "المجموع" }, 
+  total: { en: "Total", ar: "المجموع" },
   placeOrder: { en: "Place Order", ar: "تأكيد الطلب" },
   yourOrderEmpty: { en: "Your order is empty", ar: "سلة الطلبات فارغة" },
   exploreMenu: { en: "Explore our menu and add some delicious items.", ar: "تصفح القائمة وأضف بعض الأصناف اللذيذة." },
@@ -56,102 +56,260 @@ const catVideos = {
   sweets: "https://videos.pexels.com/video-files/4689866/4689866-uhd_3840_2160_25fps.mp4"
 };
 
-export const MENU_DATA: Category[] = [
+export const MENU_DATA: CategoryData[] = [
   {
-    id: 'hot-beverages',
+    id: 'Hot Beverages',
     name: { en: 'Hot Beverages', ar: 'مشروبات ساخنة' },
     image: catImages.hot,
+    images: [
+      catImages.hot,
+      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.hot,
     theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-600' },
-    items: [
-      { id: 'hb1', name: { en: 'Espresso', ar: 'اسبريسو' }, price: 1.000, category: 'Hot Beverages', image: getImg(1), description: { en: 'Single shot of rich coffee', ar: 'جرعة واحدة من القهوة الغنية' } },
-      { id: 'hb2', name: { en: 'Cappuccino', ar: 'كابتشينو' }, price: 1.500, category: 'Hot Beverages', image: getImg(2), description: { en: 'Espresso with steamed milk foam', ar: 'اسبريسو مع رغوة الحليب المبخر' } },
-      { id: 'hb3', name: { en: 'Latte', ar: 'لاتيه' }, price: 1.500, category: 'Hot Beverages', image: getImg(3), description: { en: 'Espresso with steamed milk', ar: 'اسبريسو مع حليب مبخر' } },
-      { id: 'hb4', name: { en: 'Flat White', ar: 'فلات وايت' }, price: 1.500, category: 'Hot Beverages', image: getImg(4), description: { en: 'Micro-foam milk over espresso', ar: 'رغوة خفيفة فوق الاسبريسو' } },
-      { id: 'hb5', name: { en: 'Caramel Macchiato', ar: 'كراميل ماكياتو' }, price: 1.750, category: 'Hot Beverages', image: getImg(5), description: { en: 'Vanilla syrup, steamed milk, espresso, caramel drizzle', ar: 'شراب الفانيليا، حليب مبخر، اسبريسو، وصلصة الكراميل' } },
-      { id: 'hb6', name: { en: 'Hot Chocolate', ar: 'شوكولاتة ساخنة' }, price: 1.500, category: 'Hot Beverages', image: getImg(6), description: { en: 'Classic rich cocoa', ar: 'كاكاو غني كلاسيكي' } },
-    ]
+    items: []
   },
   {
-    id: 'cold-beverages',
+    id: 'Cold Beverages',
     name: { en: 'Cold Beverages', ar: 'مشروبات باردة' },
     image: catImages.cold,
+    images: [
+      catImages.cold,
+      "https://images.unsplash.com/photo-1499961024600-ad094db305cc?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1546171753-97d7676e4602?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.cold,
     theme: { textColor: 'text-cyan-100', accentColor: 'bg-cyan-600' },
-    items: [
-      { id: 'cb1', name: { en: 'Iced Caffe Americano', ar: 'آيس كافيه أمريكانو' }, price: 1.750, category: 'Cold Beverages', image: getImg(8), description: { en: 'Espresso over ice and water', ar: 'اسبريسو مع ثلج وماء' } },
-      { id: 'cb2', name: { en: 'Iced Caffe Latte', ar: 'آيس كافيه لاتيه' }, price: 1.950, category: 'Cold Beverages', image: getImg(9), description: { en: 'Espresso and cold milk over ice', ar: 'اسبريسو وحليب بارد مع ثلج' } },
-      { id: 'cb3', name: { en: 'Iced Mocha', ar: 'آيس موكا' }, price: 2.000, category: 'Cold Beverages', image: getImg(10), description: { en: 'Espresso, chocolate sauce, milk and ice', ar: 'اسبريسو، صوص شوكولاتة، حليب وثلج' } },
-      { id: 'cb4', name: { en: 'Iced Caramel Macchiato', ar: 'آيس كراميل ماكياتو' }, price: 2.000, category: 'Cold Beverages', image: getImg(11), description: { en: 'Iced espresso with caramel and milk', ar: 'اسبريسو مثلج مع كراميل وحليب' } },
-    ]
+    items: []
   },
   {
-    id: 'frappe',
-    name: { en: "Frappe's", ar: "فرابتشينو" },
+    id: 'Frappes',
+    name: { en: "Frappes", ar: "فرابتشينو" },
     image: catImages.frappe,
+    images: [
+      catImages.frappe,
+      "https://images.unsplash.com/photo-1553787499-6f9133860278?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.frappe,
     theme: { textColor: 'text-pink-100', accentColor: 'bg-pink-600' },
-    items: [
-      { id: 'fr1', name: { en: 'Caramel Frappé', ar: 'كراميل فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(13), description: { en: 'Blended ice coffee with caramel', ar: 'قهوة مثلجة مخلوطة مع الكراميل' } },
-      { id: 'fr2', name: { en: 'Choco Frappé', ar: 'تشوكو فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(14), description: { en: 'Rich chocolate blended ice drink', ar: 'مشروب مثلج غني بالشوكولاتة' } },
-      { id: 'fr3', name: { en: 'Strawberry Frappé', ar: 'فرولة فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(15), description: { en: 'Sweet strawberry blend', ar: 'مزيج الفراولة الحلو' } },
-    ]
+    items: []
   },
   {
-    id: 'appetizers',
+    id: 'Smoothies',
+    name: { en: 'Smoothies', ar: 'عصائر سموذي' },
+    image: "https://images.unsplash.com/photo-1505252585461-04db1eb84625?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1505252585461-04db1eb84625?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1553530666-ba11a90654f3?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.cold, // Fallback
+    theme: { textColor: 'text-green-100', accentColor: 'bg-green-500' },
+    items: []
+  },
+  {
+    id: 'Milkshakes',
+    name: { en: 'Milkshakes', ar: 'ميلك شيك' },
+    image: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1553787499-6f9133860278?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.frappe, // Fallback
+    theme: { textColor: 'text-pink-100', accentColor: 'bg-pink-500' },
+    items: []
+  },
+  {
+    id: 'Fresh Juices',
+    name: { en: 'Fresh Juices', ar: 'عصائر طازجة' },
+    image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1603569283847-aa295f0d016a?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.cold, // Fallback
+    theme: { textColor: 'text-orange-100', accentColor: 'bg-orange-500' },
+    items: []
+  },
+  {
+    id: 'Cocktails',
+    name: { en: 'Cocktails', ar: 'كوكتيلات' },
+    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1536935338788-843bb5285246?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.cold, // Fallback
+    theme: { textColor: 'text-purple-100', accentColor: 'bg-purple-600' },
+    items: []
+  },
+  {
+    id: 'Malt Beverages',
+    name: { en: 'Malt Beverages', ar: 'مشروبات شعير' },
+    image: "https://images.unsplash.com/photo-1606759368364-82a1792614b8?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1606759368364-82a1792614b8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1584225064785-c62a8b43d148?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1566633806327-68e152aaf26d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1586996292898-71f4036c4e40?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.cold, // Fallback
+    theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-700' },
+    items: []
+  },
+  {
+    id: 'Refreshing Drinks',
+    name: { en: 'Refreshing Drinks', ar: 'مشروبات منعشة' },
+    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1546171753-97d7676e4602?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1499961024600-ad094db305cc?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.cold, // Fallback
+    theme: { textColor: 'text-teal-100', accentColor: 'bg-teal-500' },
+    items: []
+  },
+  {
+    id: 'Appetizers',
     name: { en: 'Appetizers', ar: 'مقبلات' },
     image: catImages.appetizers,
+    images: [
+      catImages.appetizers,
+      "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1529312266912-b33cf6227e2f?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1606850780554-b55ea2ce98e7?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1515516947383-57443e908864?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.appetizers,
     theme: { textColor: 'text-orange-100', accentColor: 'bg-orange-600' },
-    items: [
-      { id: 'ap1', name: { en: 'Bruschetta', ar: 'بروشيتا' }, price: 2.250, category: 'Appetizers', image: getImg(17), description: { en: 'Oven baked sliced bread, topped with tomato, basil', ar: 'خبز محمص بالفرن، مغطى بالطماطم والريحان' } },
-      { id: 'ap2', name: { en: 'Mozzarella Sticks', ar: 'أصابع الموزاريلا' }, price: 2.000, category: 'Appetizers', image: getImg(18), description: { en: '5 pcs of cheese sticks with pomodoro sauce', ar: '٥ قطع من أصابع الجبن مع صلصة البومودورو' } },
-      { id: 'ap3', name: { en: 'Arancini', ar: 'أرانسيني' }, price: 2.500, category: 'Appetizers', image: getImg(19), description: { en: 'Served with tomato and basil sauce', ar: 'تقدم مع صلصة الطماطم والريحان' } },
-    ]
+    items: []
   },
   {
-    id: 'pizza',
-    name: { en: 'Pizzeria Chez Nous', ar: 'بيتزا شينو' },
-    image: catImages.pizza,
-    video: catVideos.pizza,
-    theme: { textColor: 'text-red-100', accentColor: 'bg-red-600' },
-    items: [
-      { id: 'pz1', name: { en: 'Margherita', ar: 'مارغريتا' }, price: 3.250, category: 'Pizza', image: getImg(21), description: { en: 'Tomato Sauce, Mozzarella Cheese', ar: 'صلصة طماطم، جبنة موزاريلا' } },
-      { id: 'pz2', name: { en: 'Quattro Stagioni', ar: 'كواترو ستاجيوني' }, price: 3.500, category: 'Pizza', image: getImg(22), description: { en: 'Tomato Sauce, Mozzarella, Mushrooms', ar: 'صلصة طماطم، موزاريلا، فطر' } },
-      { id: 'pz3', name: { en: 'Pepperoni', ar: 'بيبروني' }, price: 4.000, category: 'Pizza', image: getImg(23), description: { en: 'Tomato Sauce, Mozzarella Cheese, Pepperoni', ar: 'صلصة طماطم، موزاريلا، بيبروني' } },
-    ]
-  },
-  {
-    id: 'pasta',
+    id: 'Italian Pasta',
     name: { en: 'Italian Pasta', ar: 'باستا إيطالية' },
     image: catImages.pasta,
+    images: [
+      catImages.pasta,
+      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1608835291093-394b0c943a75?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.pasta,
     theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-600' },
-    items: [
-      { id: 'pt1', name: { en: 'Penne Allarrabbiata', ar: 'بيني أرابياتا' }, price: 3.500, category: 'Pasta', image: getImg(25), description: { en: 'Tomato Sauce, Garlic, Crushed Chilly', ar: 'صلصة طماطم، ثوم، فلفل حار' } },
-      { id: 'pt2', name: { en: 'Spaghetti alla Bolognese', ar: 'سباغيتي بولونيز' }, price: 4.000, category: 'Pasta', image: getImg(26), description: { en: 'Tomato Sauce, Minced Beef Meat', ar: 'صلصة طماطم، لحم بقري مفروم' } },
-    ]
+    items: []
   },
   {
-    id: 'main-course',
+    id: 'Soups',
+    name: { en: 'Soups', ar: 'شوربات' },
+    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1543352634-99a5d50ae78e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1604152135912-04a022e23696?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1626015449722-1d55ee26163e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.appetizers, // Fallback
+    theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-700' },
+    items: []
+  },
+  {
+    id: 'Salads',
+    name: { en: 'Salads', ar: 'سلطات' },
+    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1546793665-c74683f339c1?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.appetizers, // Fallback
+    theme: { textColor: 'text-green-100', accentColor: 'bg-green-600' },
+    items: []
+  },
+  {
+    id: 'Risotto',
+    name: { en: 'Risotto', ar: 'ريزوتو' },
+    image: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1516685018646-549198525c1b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.main, // Fallback
+    theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-600' },
+    items: []
+  },
+  {
+    id: 'Pizzeria Chez Nous',
+    name: { en: 'Pizzeria Chez Nous', ar: 'بيتزا شينو' },
+    image: catImages.pizza,
+    images: [
+      catImages.pizza,
+      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1593560708920-63984a6d6d4e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: catVideos.pizza,
+    theme: { textColor: 'text-red-100', accentColor: 'bg-red-600' },
+    items: []
+  },
+  {
+    id: 'Main Course',
     name: { en: 'Main Course', ar: 'الطبق الرئيسي' },
     image: catImages.main,
+    images: [
+      catImages.main,
+      "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.main,
     theme: { textColor: 'text-emerald-100', accentColor: 'bg-emerald-700' },
-    items: [
-      { id: 'mc1', name: { en: 'Pollo ai Funghi', ar: 'بولو أي فونغي' }, price: 4.500, category: 'Main Course', image: getImg(29), description: { en: 'Oven roasted chicken Breast with mushroom', ar: 'صدور دجاج مشوية بالفرن مع الفطر' } },
-      { id: 'mc2', name: { en: 'Carne al Forno', ar: 'كارني ال فورنو' }, price: 6.000, category: 'Main Course', image: getImg(30), description: { en: 'Veal Tenderloin, with sauteed green beans', ar: 'تندرلوين العجل، مع فاصوليا خضراء سوتيه' } },
-    ]
+    items: []
   },
   {
-    id: 'sweets',
+    id: 'Sweets and Fruits',
     name: { en: 'Sweets & Fruits', ar: 'حلويات وفواكه' },
     image: catImages.sweets,
+    images: [
+      catImages.sweets,
+      "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1564355808539-22fda35bed7e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1488477181946-6428a029177b?auto=format&fit=crop&w=1200&q=80"
+    ],
     video: catVideos.sweets,
     theme: { textColor: 'text-rose-100', accentColor: 'bg-rose-500' },
-    items: [
-      { id: 'sw1', name: { en: 'Philadelphia Cheesecake', ar: 'تشيز كيك فيلادلفيا' }, price: 2.250, category: 'Sweets', image: getImg(33), description: { en: 'Homemade creamy cheesecake', ar: 'تشيز كيك كريمي منزلي الصنع' } },
-      { id: 'sw2', name: { en: 'Chocolate Brownies', ar: 'براونيز شوكولاتة' }, price: 2.250, category: 'Sweets', image: getImg(34), description: { en: 'Homemade rich chocolate brownies', ar: 'براونيز شوكولاتة غنية منزلية الصنع' } },
-    ]
+    items: []
   }
 ];

@@ -104,33 +104,34 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onAdd, theme, languag
   const accentColor = "bg-gold";
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 group flex flex-col h-full border border-white/20 relative sm:hover:-translate-y-2">
+    <div className="bg-white rounded-lg sm:rounded-3xl overflow-hidden shadow-sm sm:shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full border border-stone-100 relative sm:hover:-translate-y-1 transform-gpu">
 
       {/* Image Section */}
-      <div className="relative w-full h-48 sm:h-56 overflow-hidden flex-shrink-0">
+      <div className="relative w-full h-20 sm:h-56 overflow-hidden flex-shrink-0">
         <img
           src={getImage()}
           alt={getName()}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 transition-opacity duration-300"></div>
 
         {/* Price Tag */}
-        <div className="absolute bottom-4 right-4">
-          <span className={`font-sans font-bold text-lg text-white ${accentColor} px-3 py-1 rounded-full shadow-sm`}>
+        <div className="absolute bottom-1 right-1 sm:bottom-4 sm:right-4">
+          <span className={`font-sans font-bold text-[9px] sm:text-lg text-white ${accentColor} px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-sm`}>
             {currentPrice.toFixed(3)} KD
           </span>
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-4 sm:p-6 flex flex-col flex-grow relative">
-        <h3 className="font-serif text-xl font-bold text-stone-900 leading-tight mb-2">{getName()}</h3>
-        <p className="text-stone-600 text-sm leading-relaxed font-sans line-clamp-2 mb-4">{getDescription()}</p>
+      <div className="p-1.5 sm:p-6 flex flex-col flex-grow relative">
+        <h3 className="font-serif text-[10px] sm:text-xl font-bold text-stone-900 leading-tight mb-1 sm:mb-2 line-clamp-2 sm:line-clamp-none h-7 sm:h-auto">{getName()}</h3>
+        <p className="hidden sm:block text-stone-600 text-sm leading-relaxed font-sans line-clamp-2 mb-4">{getDescription()}</p>
 
-        {/* Customization Options */}
-        <div className="space-y-3 mb-4 flex-grow">
+        {/* Customization Options - Hidden on Mobile to save space */}
+        <div className="hidden sm:block space-y-3 mb-4 flex-grow">
           {/* Sizes */}
           {item.sizes && item.sizes.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -172,10 +173,10 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onAdd, theme, languag
         {/* Add Button */}
         <button
           onClick={handleAdd}
-          className={`w-full ${accentColor} text-white py-3 rounded-xl shadow-lg transform active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 font-bold tracking-wide mt-auto`}
+          className={`w-full ${accentColor} text-white py-1 sm:py-3 rounded sm:rounded-xl shadow-sm sm:shadow-lg transform active:scale-95 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 font-bold tracking-wide mt-auto text-[9px] sm:text-base`}
         >
-          <Plus size={20} />
-          <span>Add to Order</span>
+          <Plus className="w-3 h-3 sm:w-5 sm:h-5" />
+          <span>Add</span>
         </button>
       </div>
     </div>

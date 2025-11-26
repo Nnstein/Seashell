@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { MenuItem, Category } from '../src/types';
 import { CATEGORIES } from '../constants';
 import { generateMenuDescription } from '../services/geminiService';
-import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuSettings, updateMenuSettings } from '../services/firestoreService';
+import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuItems, updateMenuSettings, getMenuSettings } from '../services/firestoreService';
 import { uploadImage } from '../services/storageService';
+import SearchBar from './SearchBar';
 import { X, Plus, Sparkles, Loader2, Image as ImageIcon, DollarSign, Edit3, Trash2, Calendar, CheckCircle, Upload } from 'lucide-react';
 
 interface MenuEditorProps {
@@ -19,13 +20,16 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
     const [viewSeason, setViewSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [hasExistingData, setHasExistingData] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Load active season on mount
+    const init = async () => {
+        if (menu.length > 0) setHasExistingData(true);
+        const settings = await getMenuSettings();
+        if (settings) setActiveSeason(settings.activeSeason);
+    };
 
     useEffect(() => {
-        const init = async () => {
-            if (menu.length > 0) setHasExistingData(true);
-            const settings = await getMenuSettings();
-            if (settings) setActiveSeason(settings.activeSeason);
-        };
         init();
     }, [menu]);
 
@@ -368,10 +372,30 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         setActiveSeason(newSeason);
     };
 
-    const filteredMenu = menu.filter(item =>
-        (filterCategory === 'All' || item.category === filterCategory) &&
-        (item.season === viewSeason || (!item.season && viewSeason === 'Summer'))
-    );
+    const filteredMenu = menu.filter(item => {
+        // Filter by category
+        const categoryMatch = filterCategory === 'All' || item.category === filterCategory;
+
+        // Filter by season
+        const seasonMatch = item.season === viewSeason || (!item.season && viewSeason === 'Summer');
+
+        // Filter by search query
+        let searchMatch = true;
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            const name = typeof item.name === 'object' ? item.name.en : item.name;
+            const description = typeof item.description === 'object' ? item.description.en : item.description;
+            const category = item.category;
+
+            searchMatch = (
+                name.toLowerCase().includes(query) ||
+                description?.toLowerCase().includes(query) ||
+                category.toLowerCase().includes(query)
+            );
+        }
+
+        return categoryMatch && seasonMatch && searchMatch;
+    });
 
     return (
         <div className="h-full flex flex-col p-6 md:p-8">
@@ -444,6 +468,15 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                     </div>
                 </div>
 
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-6 max-w-md">
+                <SearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search menu items..."
+                />
             </div>
 
             {/* Categories */}

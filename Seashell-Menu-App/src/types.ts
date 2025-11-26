@@ -17,6 +17,26 @@ export type Category =
     | 'Main Course'
     | 'Sweets and Fruits';
 
+export interface Theme {
+    textColor: string;
+    accentColor: string;
+}
+
+export interface LocalizedString {
+    en: string;
+    ar: string;
+}
+
+export interface CategoryData {
+    id: string;
+    name: LocalizedString;
+    image: string;
+    images: string[]; // Dynamic images
+    video: string;
+    theme: Theme;
+    items: MenuItem[];
+}
+
 export interface MenuItem {
     id?: string;
     name: string | { en: string; ar: string };
