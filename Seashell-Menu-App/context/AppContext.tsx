@@ -194,7 +194,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         totalAmount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         paymentMethod,
         items: orderItems,
-        chairNumber: isBeachGuest ? chairNumber : undefined
+        ...(isBeachGuest && chairNumber ? { chairNumber } : {})
       });
 
       console.log("DEBUG: Order sent to Firestore successfully.");
