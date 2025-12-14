@@ -81,6 +81,7 @@ export interface Order {
     paymentMethod?: 'cash' | 'card' | 'room-charge';
     createdAt: number;
     items: OrderItem[];
+    chairNumber?: string; // For Beach Guests
 }
 
 export interface Guest {

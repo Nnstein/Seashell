@@ -12,6 +12,14 @@
         "destination": "/management/index.html"
       },
       {
+        "source": "/housekeeping/**",
+        "destination": "/housekeeping/index.html"
+      },
+      {
+        "source": "/housekeeping-management/**",
+        "destination": "/housekeeping-management/index.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

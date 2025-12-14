@@ -19,7 +19,10 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
     handleCheckout,
     language,
     roomNumber,
-    isPlacingOrder
+    isPlacingOrder,
+    chairNumber,
+    setChairNumber,
+    isBeachGuest
   } = useApp();
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -65,9 +68,14 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
               <h2 className="font-serif text-3xl font-bold text-stone-800 flex items-center gap-2">
                 {UI_TEXT.myOrder[language]}
               </h2>
-              {/* Room Number Display */}
+              {/* Room/Beach Number Display */}
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-bold tracking-wider uppercase text-stone-400">{UI_TEXT.roomNumber[language]}:</span>
+                <span className="text-xs font-bold tracking-wider uppercase text-stone-400">
+                  {isBeachGuest
+                    ? (language === 'ar' ? 'رقم الشاطئ' : 'Beach Number')
+                    : UI_TEXT.roomNumber[language]
+                  }:
+                </span>
                 <span className="text-sm font-sans font-bold text-gold bg-stone-900 px-2 py-0.5 rounded">{roomNumber}</span>
               </div>
             </div>
@@ -219,6 +227,25 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
 
               {/* ... inside component ... */}
 
+              {/* Beach Guest: Chair Number Input */}
+              {isBeachGuest && (
+                <div className="mb-6 space-y-2 animate-fade-in">
+                  <label className="text-xs uppercase tracking-widest text-stone-500">
+                    {language === 'ar' ? 'رقم الكرسي / الطاولة' : 'Chair / Table Number'} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={chairNumber}
+                    onChange={(e) => setChairNumber(e.target.value.toUpperCase())}
+                    placeholder={language === 'ar' ? 'مثال: C12' : 'e.g. C12'}
+                    className="w-full p-4 bg-stone-50 border-2 border-stone-200 rounded-xl focus:border-gold focus:ring-0 outline-none font-mono text-lg font-bold text-stone-900 placeholder:text-stone-300 transition-colors"
+                  />
+                  <p className="text-[10px] text-stone-400">
+                    {language === 'ar' ? 'يرجى إدخال الرقم الموجود على الكرسي أو الطاولة.' : 'Please enter the number tag found on your chair or table.'}
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={(e) => {
@@ -226,8 +253,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                   e.stopPropagation();
                   if (!isPlacingOrder) handleCheckout(paymentMethod);
                 }}
-                disabled={isPlacingOrder}
-                className={`w-full bg-stone-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg hover:bg-gold hover:text-white hover:shadow-gold/20 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 ${isPlacingOrder ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isPlacingOrder || (isBeachGuest && !chairNumber)}
+                className={`w-full bg-stone-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg hover:bg-gold hover:text-white hover:shadow-gold/20 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 ${isPlacingOrder || (isBeachGuest && !chairNumber) ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {isPlacingOrder ? (
                   <Loader2 className="animate-spin" size={24} />

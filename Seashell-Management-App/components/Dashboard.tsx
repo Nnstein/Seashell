@@ -3,7 +3,8 @@ import { Order, OrderStatus } from '../src/types';
 import OrderCard from './OrderCard';
 import SearchBar from './SearchBar';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell, XAxis } from 'recharts';
-import { LayoutGrid, List, ShoppingBag, Clock } from 'lucide-react';
+import { LayoutGrid, List, ShoppingBag, Clock, Bell, BellOff } from 'lucide-react';
+import { useOrders } from '../context/OrdersContext';
 
 
 
@@ -15,6 +16,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
     const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
     const [searchQuery, setSearchQuery] = useState('');
+    const { notificationsEnabled, toggleNotifications } = useOrders();
 
     // Calculate Stats
     const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
@@ -91,26 +93,41 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                     <p className="text-slate-500 font-serif italic mt-1">Manage workflow and guest requests</p>
                 </div>
 
-                {/* Enhanced Toggle Switch */}
-                <div className="bg-sand p-1 rounded-lg flex shadow-inner border border-slate-200/60">
+                <div className="flex items-center gap-3">
+                    {/* Notification Toggle */}
                     <button
-                        onClick={() => setViewMode('kanban')}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${viewMode === 'kanban'
-                            ? 'bg-white text-ink shadow-sm font-serif'
-                            : 'text-slate-500 hover:text-ink'
+                        onClick={toggleNotifications}
+                        className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border ${notificationsEnabled
+                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                             }`}
+                        title={notificationsEnabled ? 'Notifications ON' : 'Notifications OFF'}
                     >
-                        <LayoutGrid size={16} className="mr-2" /> Board
+                        {notificationsEnabled ? <Bell size={16} className="mr-2" /> : <BellOff size={16} className="mr-2" />}
+                        {notificationsEnabled ? 'Notifications ON' : 'Notifications OFF'}
                     </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${viewMode === 'list'
-                            ? 'bg-white text-ink shadow-sm font-serif'
-                            : 'text-slate-500 hover:text-ink'
-                            }`}
-                    >
-                        <List size={16} className="mr-2" /> List
-                    </button>
+
+                    {/* Enhanced Toggle Switch */}
+                    <div className="bg-sand p-1 rounded-lg flex shadow-inner border border-slate-200/60">
+                        <button
+                            onClick={() => setViewMode('kanban')}
+                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${viewMode === 'kanban'
+                                ? 'bg-white text-ink shadow-sm font-serif'
+                                : 'text-slate-500 hover:text-ink'
+                                }`}
+                        >
+                            <LayoutGrid size={16} className="mr-2" /> Board
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 ${viewMode === 'list'
+                                ? 'bg-white text-ink shadow-sm font-serif'
+                                : 'text-slate-500 hover:text-ink'
+                                }`}
+                        >
+                            <List size={16} className="mr-2" /> List
+                        </button>
+                    </div>
                 </div>
             </div>
 

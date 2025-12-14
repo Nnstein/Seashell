@@ -40,6 +40,9 @@ interface AppState {
   categoryImages: Record<string, string>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  chairNumber: string;
+  setChairNumber: (num: string) => void;
+  isBeachGuest: boolean;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -58,6 +61,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chairNumber, setChairNumber] = useState('');
+
+  const isBeachGuest = roomNumber.toUpperCase().startsWith('B');
 
   // Use the hook for dynamic images
   const categoryImages = useCategoryImages();
@@ -163,6 +169,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       return;
     }
 
+    if (isBeachGuest && !chairNumber) {
+      alert("Please enter your Chair/Table Number.");
+      return;
+    }
+
     if (isPlacingOrder) return;
 
     setIsPlacingOrder(true);
@@ -182,7 +193,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         guestName: 'Guest', // Placeholder, could be fetched if we had guest auth
         totalAmount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         paymentMethod,
-        items: orderItems
+        items: orderItems,
+        chairNumber: isBeachGuest ? chairNumber : undefined
       });
 
       console.log("DEBUG: Order sent to Firestore successfully.");
@@ -224,7 +236,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       activeSeason,
       categoryImages,
       searchQuery,
-      setSearchQuery
+      setSearchQuery,
+      chairNumber,
+      setChairNumber,
+      isBeachGuest
     }}>
       {children}
     </AppContext.Provider>
