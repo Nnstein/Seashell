@@ -22,9 +22,9 @@ const Header: React.FC<HeaderProps> = ({ theme }) => {
               {isRTL ? <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           )}
-          <div className="cursor-pointer group text-center sm:text-left" onClick={() => setView('HOME')}>
-            <h1 className="font-serif text-xl sm:text-3xl font-bold tracking-tight text-white group-hover:text-gold transition-colors duration-300 drop-shadow-md">PRESTO</h1>
-            <p className="text-[8px] sm:text-[10px] font-sans tracking-[0.2em] text-white/70 uppercase group-hover:tracking-[0.3em] transition-all duration-500">Coffee & More</p>
+          <div className="cursor-pointer group flex flex-col items-center sm:items-start leading-none px-2" onClick={() => setView('HOME')}>
+            <span className="font-serif text-[10px] sm:text-xs italic text-white/90 group-hover:text-gold transition-all duration-300 transform group-hover:-translate-y-0.5">seashell</span>
+            <h1 className="font-sans text-xl sm:text-2xl font-bold tracking-widest text-white uppercase group-hover:text-gold transition-all duration-300 drop-shadow-md">F&B</h1>
           </div>
         </div>
 

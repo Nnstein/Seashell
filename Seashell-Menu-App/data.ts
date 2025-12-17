@@ -27,8 +27,8 @@ export const UI_TEXT = {
   totalPaid: { en: "Total", ar: "الإجمالي" },
   startNew: { en: "Back to Home", ar: "العودة للرئيسية" },
   experienceTaste: { en: "Experience the Taste", ar: "تذوق الفخامة" },
-  welcomeTitle: { en: "Presto Coffee & More", ar: "بريستو كوفي وأكثر" },
-  welcomeSubtitle: { en: "A symphony of flavors, crafted for moments of pure delight.", ar: "سيمفونية من النكهات، صُنعت لتبقى في الذاكرة." }
+  welcomeTitle: { en: "Seashell F&B", ar: "سي شيل للمأكولات والمشروبات" },
+  welcomeSubtitle: { en: "", ar: "" }
 };
 
 // Specific images for categories
@@ -57,6 +57,141 @@ const catVideos = {
 };
 
 export const MENU_DATA: CategoryData[] = [
+  {
+    id: 'Breakfast',
+    name: { en: 'Breakfast', ar: 'الفطور' },
+    image: "https://images.unsplash.com/photo-1533089862017-ec329abb0a29??auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1533089862017-ec329abb0a29??auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1525351484163-7529414395d8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1496042399014-dc73cbb3bce8?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://videos.pexels.com/video-files/2941916/2941916-uhd_2560_1440_24fps.mp4",
+    theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-500' },
+    items: [
+      {
+        id: 'bk-1',
+        name: { en: 'Seashell Breakfast', ar: 'إفطار سي شيل' },
+        description: {
+          en: 'Brewed tea or coffee, orange juice, freshly baked croissant, danish, bread rolls and toast, butter and jams, cereal, muesli, yogurt, cheeses, eggs cooked your way, fresh fruits, bacon, sausages, potato, tomato, and mushrooms.',
+          ar: 'شاي أو قهوة، عصير برتقال، كرواسون طازج، دانيش، خبز محمص، زبدة ومربى، حبوب، موسلي، زبادي، أجبان، بيض حسب اختيارك، فواكه طازجة، لحم مقدد، نقانق، بطاطس، طماطم وفطر.'
+        },
+        price: 6.000,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1533089862017-ec329abb0a29?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-2',
+        name: { en: 'Mediterranean Breakfast', ar: 'إفطار متوسطي' },
+        description: {
+          en: 'Brewed tea or coffee, orange juice, freshly baked pastries with honey, jam and butter, hummus, white cheese, labneh, tomato, cucumber, olives and pickles, cold cuts, foul, boiled eggs, falafel, and eggs cooked your way.',
+          ar: 'شاي أو قهوة، عصير برتقال، معجنات طازجة مع عسل ومربى وزبدة، حمص، جبنة بيضاء، لبنة، طماطم، خيار، زيتون ومخللات، لحوم باردة، فول، بيض مسلوق، فلافل، وبيض حسب اختيارك.'
+        },
+        price: 5.500,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-3',
+        name: { en: 'Eggs', ar: 'بيض' },
+        description: {
+          en: 'Eggs cooked your way served with beef bacon, chicken sausages, potatoes, peppers, tomatoes, and mushroom.',
+          ar: 'بيض مطهو حسب رغبتك يقدم مع لحم بقري مقدد، نقانق دجاج، بطاطس، فلفل، طماطم وفطر.'
+        },
+        price: 2.000,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1525351484163-7529414395d8?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-4',
+        name: { en: 'Cheese Plate', ar: 'طبق أجبان' },
+        description: {
+          en: 'A selection of international cheeses served with a freshly baked bread basket.',
+          ar: 'تشكيلة من الأجبان العالمية تقدم مع سلة خبز طازج.'
+        },
+        price: 3.000,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-5',
+        name: { en: 'Pastry Basket', ar: 'سلة معجنات' },
+        description: {
+          en: 'Croissant, assorted Danish, and cinnamon roll.',
+          ar: 'كرواسون، تشكيلة دانيش، ولفائف القرفة.'
+        },
+        price: 2.750,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1509365465985-25d11c17e812?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-6',
+        name: { en: 'Baguette', ar: 'باغيت' },
+        description: { en: 'Freshly baked baguette.', ar: 'خبز باغيت طازج.' },
+        price: 1.100,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1598373182133-52452f7691ef?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-7',
+        name: { en: 'Kraft Corn Loaf', ar: 'خبز الذرة كرافت' },
+        description: { en: 'Freshly baked corn loaf.', ar: 'خبز الذرة الطازج.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-8',
+        name: { en: 'Multi Cereal Loaf', ar: 'خبز الحبوب المتعددة' },
+        description: { en: 'Healthy multi-cereal loaf.', ar: 'خبز صحي متعدد الحبوب.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-9',
+        name: { en: 'Country Loaf', ar: 'خبز ريفي' },
+        description: { en: 'Classic country style loaf.', ar: 'خبز على الطريقة الريفية.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-10',
+        name: { en: 'Pancakes & Waffles', ar: 'بان كيك ووافل' },
+        description: {
+          en: 'Choose between pancakes or waffles with either maple syrup, strawberries or chocolate sauce and fruits.',
+          ar: 'اختر بين البان كيك أو الوافل مع شراب القيقب، الفراولة أو صلصة الشوكولاتة والفواكه.'
+        },
+        price: 3.500,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-11',
+        name: { en: 'Cereal', ar: 'حبوب الإفطار' },
+        description: {
+          en: 'Your choice of cornflakes, rice krispies, all bran or muesli. Served with cold or hot milk.',
+          ar: 'اختيارك من الكورن فليكس، رايس كريسبي، أول بران أو موسلي. يقدم مع حليب بارد أو ساخن.'
+        },
+        price: 1.750,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1521483450421-a0589197e595?auto=format&fit=crop&w=800&q=80'
+      },
+      {
+        id: 'bk-12',
+        name: { en: 'Fresh Fruits', ar: 'فواكه طازجة' },
+        description: {
+          en: 'A platter of fresh cut seasonal fruits.',
+          ar: 'طبق من الفواكه الموسمية المقطعة طازجة.'
+        },
+        price: 1.500,
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?auto=format&fit=crop&w=800&q=80'
+      }
+    ]
+  },
   {
     id: 'Hot Beverages',
     name: { en: 'Hot Beverages', ar: 'مشروبات ساخنة' },

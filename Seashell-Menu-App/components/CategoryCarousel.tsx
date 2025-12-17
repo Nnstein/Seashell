@@ -58,7 +58,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeC
 
         <div
           ref={scrollRef}
-          className={`flex gap-3 sm:gap-6 overflow-x-auto pb-4 sm:pb-12 pt-4 sm:pt-8 scrollbar-hide snap-x snap-mandatory px-2 sm:px-4 ${isRTL ? 'flex-row-reverse' : ''}`}
+          className={`flex gap-3 sm:gap-6 overflow-x-auto pb-4 sm:pb-12 pt-4 sm:pt-8 scrollbar-hide snap-x snap-mandatory px-4 sm:px-4 ${isRTL ? 'flex-row-reverse' : ''}`}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {normalizedCategories.map((cat) => {
@@ -68,7 +68,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories, activeC
                 key={cat.id}
                 onClick={() => onSelectCategory(cat.id)}
                 className={`
-                  relative flex-none w-24 h-20 sm:w-56 sm:h-36 rounded-xl sm:rounded-2xl snap-center transition-all duration-500 ease-out
+                  relative flex-none w-28 h-24 sm:w-56 sm:h-36 rounded-xl sm:rounded-2xl snap-center transition-all duration-500 ease-out
                   group/card overflow-hidden shadow-lg
                   ${isActive ? 'scale-105 sm:scale-110 ring-2 ring-gold shadow-gold/30 z-10' : 'opacity-80 hover:opacity-100 hover:scale-105'}
                 `}

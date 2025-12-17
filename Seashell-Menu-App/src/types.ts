@@ -1,4 +1,5 @@
 export type Category =
+    | 'Breakfast'
     | 'Hot Beverages'
     | 'Cold Beverages'
     | 'Frappes'

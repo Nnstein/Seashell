@@ -50,7 +50,7 @@ const AppContext = createContext<AppState | undefined>(undefined);
 export const AppProvider = ({ children }: PropsWithChildren) => {
   const [language, setLanguage] = useState<Language>('en');
   const [view, setView] = useState<ViewState>('HOME');
-  const [activeCategory, setActiveCategory] = useState<string>('Hot Beverages');
+  const [activeCategory, setActiveCategory] = useState<string>('Breakfast');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [confirmedOrder, setConfirmedOrder] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -93,7 +93,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         // Set initial category if items exist
         if (filteredItems.length > 0) {
           // Group by category or just set default
-          setActiveCategory('Hot Beverages'); // Updated default
+          setActiveCategory('Breakfast'); // Updated default
         }
       } catch (error) {
         console.error("Failed to load menu:", error);
@@ -217,7 +217,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setConfirmedOrder([]);
     setRoomNumber('');
     setView('HOME');
-    setActiveCategory('Hot Beverages');
+    setActiveCategory('Breakfast');
   };
 
   return (

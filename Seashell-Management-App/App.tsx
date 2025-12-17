@@ -79,7 +79,7 @@ const App: React.FC = () => {
             <Shell size={32} />
           </div>
           <div className="text-center">
-            <h1 className="font-serif font-bold text-xl tracking-wide">SEASHELL</h1>
+            <h1 className="font-serif font-bold text-lg tracking-wide text-gold">F & B MEALS</h1>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Manager Portal</p>
           </div>
         </div>

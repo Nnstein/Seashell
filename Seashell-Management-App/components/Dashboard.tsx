@@ -98,8 +98,8 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                     <button
                         onClick={toggleNotifications}
                         className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border ${notificationsEnabled
-                                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                            ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                            : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                             }`}
                         title={notificationsEnabled ? 'Notifications ON' : 'Notifications OFF'}
                     >
@@ -214,7 +214,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                     </div>
                 ) : (
                     <div className="bg-white shadow-sm overflow-hidden border-t-4 border-ink h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="overflow-y-auto flex-1 overscroll-contain">
+                        <div className="overflow-y-auto overflow-x-auto flex-1 overscroll-contain">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-sand text-ink font-serif border-b border-slate-200 sticky top-0 z-10">
                                     <tr>

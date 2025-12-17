@@ -1,14 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Hero from '../components/Hero';
 import SearchBar from '../components/SearchBar';
 import CategoryCarousel from '../components/CategoryCarousel';
 import MenuItemCard from '../components/MenuItemCard';
+import MenuItemModal from '../components/MenuItemModal';
 import { MENU_DATA } from '../data';
+import { MenuItem } from '../src/types';
 
 const MenuView: React.FC = () => {
   const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu, categoryImages, searchQuery, setSearchQuery } = useApp();
   const [isSticky, setIsSticky] = React.useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const searchBarRef = React.useRef<HTMLDivElement>(null);
 
   React.useLayoutEffect(() => {
@@ -112,12 +115,13 @@ const MenuView: React.FC = () => {
       </section>
 
       <section className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 pt-2 sm:pt-8 min-h-screen">
-        <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 sm:gap-6 animate-fade-in-up">
+        <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6 animate-fade-in-up">
           {currentItems.map((item) => (
             <MenuItemCard
               key={item.id}
               item={item}
               onAdd={addToCart}
+              onCardClick={setSelectedItem}
               theme="light"
               language={language}
             />
@@ -129,6 +133,17 @@ const MenuView: React.FC = () => {
           )}
         </div>
       </section>
+
+      {/* Detail Modal */}
+      {selectedItem && (
+        <MenuItemModal
+          item={selectedItem}
+          isOpen={true}
+          onClose={() => setSelectedItem(null)}
+          onAdd={addToCart}
+          language={language}
+        />
+      )}
     </div>
   );
 };
