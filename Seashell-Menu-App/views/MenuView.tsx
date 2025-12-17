@@ -115,7 +115,7 @@ const MenuView: React.FC = () => {
       </section>
 
       <section className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 pt-2 sm:pt-8 min-h-screen">
-        <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6 animate-fade-in-up">
+        <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 animate-fade-in-up">
           {currentItems.map((item) => (
             <MenuItemCard
               key={item.id}

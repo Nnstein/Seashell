@@ -26,7 +26,7 @@ interface AppState {
   updateInstructions: (cartId: string, instructions: string) => void;
   removeFromCart: (cartId: string) => void;
   resetOrder: () => void;
-  handleCheckout: (paymentMethod: 'room-charge' | 'card') => void;
+  handleCheckout: (paymentMethod: 'room-charge' | 'card' | 'hesabe') => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   animateCart: boolean;
@@ -161,8 +161,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     ));
   };
 
-  const handleCheckout = async (paymentMethod: 'room-charge' | 'card') => {
+  const handleCheckout = async (paymentMethod: 'room-charge' | 'card' | 'hesabe') => {
     if (cart.length === 0) return;
+
+    if (paymentMethod === 'hesabe') {
+      // Integration pending backend setup per HESABE_INTEGRATION_PLAN.md
+      alert("Redirecting to Hesabe Payment Gateway... (Integration Pending)");
+      // TODO: Call cloud function 'initiateHesabePayment' here
+      return;
+    }
 
     if (!roomNumber) {
       alert("Please enter a room number.");

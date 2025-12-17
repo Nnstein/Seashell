@@ -43,7 +43,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language
     >
 
       {/* Image Section */}
-      <div className="relative w-full h-28 sm:h-56 overflow-hidden flex-shrink-0">
+      <div className="relative w-full h-24 sm:h-56 overflow-hidden flex-shrink-0">
         <img
           src={getImage()}
           alt={getName()}
@@ -62,7 +62,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language
       </div>
 
       {/* Content Section */}
-      <div className="p-2.5 sm:p-6 flex flex-col flex-grow relative">
+      <div className="p-2 sm:p-6 flex flex-col flex-grow relative">
         <h3 className="font-serif text-xs sm:text-xl font-bold text-stone-900 leading-tight mb-1 sm:mb-2 line-clamp-2 sm:line-clamp-none h-8 sm:h-auto">{getName()}</h3>
         <p className="text-stone-600 text-[9px] sm:text-sm leading-relaxed font-sans line-clamp-2 mb-0 h-7 sm:h-auto">{getDescription()}</p>
       </div>
