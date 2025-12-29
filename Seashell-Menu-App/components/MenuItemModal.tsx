@@ -147,8 +147,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                                                 key={size.name}
                                                 onClick={() => setSelectedSize(size.name)}
                                                 className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all duration-200 ${selectedSize === size.name
-                                                        ? 'border-gold bg-gold text-white shadow-md transform scale-105'
-                                                        : 'border-stone-100 bg-stone-50 text-stone-600 hover:border-gold/30'
+                                                    ? 'border-gold bg-gold text-white shadow-md transform scale-105'
+                                                    : 'border-stone-100 bg-stone-50 text-stone-600 hover:border-gold/30'
                                                     }`}
                                             >
                                                 {size.name}
@@ -170,8 +170,8 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                                                 key={addon.name}
                                                 onClick={() => handleAddonToggle(addon.name)}
                                                 className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all duration-200 group ${selectedAddons.includes(addon.name)
-                                                        ? 'border-gold bg-gold/5 text-gold'
-                                                        : 'border-stone-100 bg-white text-stone-600 hover:border-gold/30'
+                                                    ? 'border-gold bg-gold/5 text-gold'
+                                                    : 'border-stone-100 bg-white text-stone-600 hover:border-gold/30'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -199,7 +199,7 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
                             placeholder={language === 'ar' ? 'أي طلبات خاصة؟' : 'Any special requests?'}
-                            className="w-full p-3 sm:p-4 rounded-xl border border-stone-200 bg-stone-50 text-sm focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-colors resize-none h-20 sm:h-24"
+                            className="w-full p-3 sm:p-4 rounded-xl border border-stone-200 bg-stone-50 text-stone-900 text-sm focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-colors resize-none h-20 sm:h-24"
                         />
                     </div>
                 </div>
