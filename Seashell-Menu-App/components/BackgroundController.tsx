@@ -8,7 +8,7 @@ interface BackgroundMedia {
 }
 
 const BackgroundController: React.FC = () => {
-  const { view, activeCategory } = useApp();
+  const { view, activeCategory, categoryImages } = useApp();
 
   // Calculate target media
   const targetMedia: BackgroundMedia = useMemo(() => {
@@ -16,9 +16,12 @@ const BackgroundController: React.FC = () => {
       return { type: 'image', src: LANDING_IMAGE };
     }
     const cat = MENU_DATA.find(c => c.id === activeCategory) || MENU_DATA[0];
-    // Removed the w=1200 forced upgrade to use the lower weight images for faster loading as requested
-    return { type: 'image', src: cat.image };
-  }, [view, activeCategory]);
+
+    // Use dynamic image if available, otherwise fallback to static
+    const imageSrc = categoryImages[cat.id] || cat.image;
+
+    return { type: 'image', src: imageSrc };
+  }, [view, activeCategory, categoryImages]);
 
   // Two layers for cross-fading
   const [layers, setLayers] = useState<BackgroundMedia[]>([targetMedia, targetMedia]);
@@ -27,17 +30,17 @@ const BackgroundController: React.FC = () => {
 
   useEffect(() => {
     const currentActive = layers[activeIdx];
-    
+
     // If target is same as current active, do nothing
     if (targetMedia.src === currentActive.src) return;
-    
+
     // If already loading this specific target, do nothing
     if (pendingSrc === targetMedia.src) return;
 
     // Prepare the "next" layer
     const nextIdx = (activeIdx + 1) % 2;
     setPendingSrc(targetMedia.src);
-    
+
     setLayers(prev => {
       const newLayers = [...prev];
       newLayers[nextIdx] = targetMedia;
@@ -63,11 +66,19 @@ const BackgroundController: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-0 bg-black overflow-hidden">
+    <div className="fixed inset-0 z-0 bg-stone-900 overflow-hidden">
+      {/* Gradient Fallback (Visible while images load) */}
+      <div className="absolute inset-0 bg-gradient-to-br from-stone-800 to-black z-0" />
+
       {[0, 1].map((idx) => {
         const isActive = activeIdx === idx;
         const layer = layers[idx];
-        
+
+        // For the very first load, we want to show the image immediately (progressive load)
+        // instead of waiting for onLoad to trigger the fade-in.
+        // We can check if it's the initial render by checking if pendingSrc is null and we are at start.
+        // But simpler: just rely on the image tag's natural loading if opacity is 1.
+
         return (
           <div
             key={idx}
@@ -88,18 +99,18 @@ const BackgroundController: React.FC = () => {
                 className="w-full h-full object-cover scale-105"
                 src={layer.src}
                 alt="background"
+                loading="eager" // Prioritize loading
                 onLoad={() => handleImageLoad(idx)}
                 onError={() => {
-                   // Force transition on error so screen isn't permanently black/stuck
-                   console.error("Background Load Failed", layer.src);
-                   handleImageLoad(idx); 
+                  console.error("Background Load Failed", layer.src);
+                  handleImageLoad(idx);
                 }}
               />
             )}
           </div>
         );
       })}
-      
+
       {/* Global Overlays */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] z-10 pointer-events-none"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90 z-10 pointer-events-none"></div>

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { MenuItem, Category } from '../src/types';
 import { CATEGORIES } from '../constants';
 import { generateMenuDescription } from '../services/geminiService';
-import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuSettings, updateMenuSettings } from '../services/firestoreService';
+import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuItems, updateMenuSettings, getMenuSettings } from '../services/firestoreService';
 import { uploadImage } from '../services/storageService';
+import SearchBar from './SearchBar';
 import { X, Plus, Sparkles, Loader2, Image as ImageIcon, DollarSign, Edit3, Trash2, Calendar, CheckCircle, Upload } from 'lucide-react';
 
 interface MenuEditorProps {
@@ -19,13 +20,16 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
     const [viewSeason, setViewSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [hasExistingData, setHasExistingData] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Load active season on mount
+    const init = async () => {
+        if (menu.length > 0) setHasExistingData(true);
+        const settings = await getMenuSettings();
+        if (settings) setActiveSeason(settings.activeSeason);
+    };
 
     useEffect(() => {
-        const init = async () => {
-            if (menu.length > 0) setHasExistingData(true);
-            const settings = await getMenuSettings();
-            if (settings) setActiveSeason(settings.activeSeason);
-        };
         init();
     }, [menu]);
 
@@ -101,6 +105,24 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         if (!window.confirm("This will add all default menu items to the database. Continue?")) return;
 
         const SEED_DATA = [
+            // --- Breakfast ---
+            {
+                category: 'Breakfast',
+                items: [
+                    { name: { en: 'Seashell Breakfast', ar: 'إفطار سي شيل' }, price: 6.000, description: { en: 'Brewed tea or coffee, orange juice, freshly baked croissant, danish, bread rolls and toast, butter and jams, cereal, muesli, yogurt, cheeses, eggs cooked your way, fresh fruits, bacon, sausages, potato, tomato, and mushrooms.', ar: 'شاي أو قهوة، عصير برتقال، كرواسون طازج، دانيش، خبز محمص، زبدة ومربى، حبوب، موسلي، زبادي، أجبان، بيض حسب اختيارك، فواكه طازجة، لحم مقدد، نقانق، بطاطس، طماطم وفطر.' } },
+                    { name: { en: 'Mediterranean Breakfast', ar: 'إفطار متوسطي' }, price: 5.500, description: { en: 'Brewed tea or coffee, orange juice, freshly baked pastries with honey, jam and butter, hummus, white cheese, labneh, tomato, cucumber, olives and pickles, cold cuts, foul, boiled eggs, falafel, and eggs cooked your way.', ar: 'شاي أو قهوة، عصير برتقال، معجنات طازجة مع عسل ومربى وزبدة، حمص، جبنة بيضاء، لبنة، طماطم، خيار، زيتون ومخللات، لحوم باردة، فول، بيض مسلوق، فلافل، وبيض حسب اختيارك.' } },
+                    { name: { en: 'Eggs', ar: 'بيض' }, price: 2.000, description: { en: 'Eggs cooked your way served with beef bacon, chicken sausages, potatoes, peppers, tomatoes, and mushroom.', ar: 'بيض مطهو حسب رغبتك يقدم مع لحم بقري مقدد، نقانق دجاج، بطاطس، فلفل، طماطم وفطر.' } },
+                    { name: { en: 'Cheese Plate', ar: 'طبق أجبان' }, price: 3.000, description: { en: 'A selection of international cheeses served with a freshly baked bread basket.', ar: 'تشكيلة من الأجبان العالمية تقدم مع سلة خبز طازج.' } },
+                    { name: { en: 'Pastry Basket', ar: 'سلة معجنات' }, price: 2.750, description: { en: 'Croissant, assorted Danish, and cinnamon roll.', ar: 'كرواسون، تشكيلة دانيش، ولفائف القرفة.' } },
+                    { name: { en: 'Baguette', ar: 'باغيت' }, price: 1.100, description: { en: 'Freshly baked baguette.', ar: 'خبز باغيت طازج.' } },
+                    { name: { en: 'Kraft Corn Loaf', ar: 'خبز الذرة كرافت' }, price: 1.250, description: { en: 'Freshly baked corn loaf.', ar: 'خبز الذرة الطازج.' } },
+                    { name: { en: 'Multi Cereal Loaf', ar: 'خبز الحبوب المتعددة' }, price: 1.250, description: { en: 'Healthy multi-cereal loaf.', ar: 'خبز صحي متعدد الحبوب.' } },
+                    { name: { en: 'Country Loaf', ar: 'خبز ريفي' }, price: 1.250, description: { en: 'Classic country style loaf.', ar: 'خبز على الطريقة الريفية.' } },
+                    { name: { en: 'Pancakes & Waffles', ar: 'بان كيك ووافل' }, price: 3.500, description: { en: 'Choose between pancakes or waffles with either maple syrup, strawberries or chocolate sauce and fruits.', ar: 'اختر بين البان كيك أو الوافل مع شراب القيقب، الفراولة أو صلصة الشوكولاتة والفواكه.' } },
+                    { name: { en: 'Cereal', ar: 'حبوب الإفطار' }, price: 1.750, description: { en: 'Your choice of cornflakes, rice krispies, all bran or muesli. Served with cold or hot milk.', ar: 'اختيارك من الكورن فليكس، رايس كريسبي، أول بران أو موسلي. يقدم مع حليب بارد أو ساخن.' } },
+                    { name: { en: 'Fresh Fruits', ar: 'فواكه طازجة' }, price: 1.500, description: { en: 'A platter of fresh cut seasonal fruits.', ar: 'طبق من الفواكه الموسمية المقطعة طازجة.' } },
+                ]
+            },
             // --- Hot Beverages ---
             {
                 category: 'Hot Beverages',
@@ -368,10 +390,30 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         setActiveSeason(newSeason);
     };
 
-    const filteredMenu = menu.filter(item =>
-        (filterCategory === 'All' || item.category === filterCategory) &&
-        (item.season === viewSeason || (!item.season && viewSeason === 'Summer'))
-    );
+    const filteredMenu = menu.filter(item => {
+        // Filter by category
+        const categoryMatch = filterCategory === 'All' || item.category === filterCategory;
+
+        // Filter by season
+        const seasonMatch = item.season === viewSeason || (!item.season && viewSeason === 'Summer');
+
+        // Filter by search query
+        let searchMatch = true;
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            const name = typeof item.name === 'object' ? item.name.en : item.name;
+            const description = typeof item.description === 'object' ? item.description.en : item.description;
+            const category = item.category;
+
+            searchMatch = (
+                name.toLowerCase().includes(query) ||
+                description?.toLowerCase().includes(query) ||
+                category.toLowerCase().includes(query)
+            );
+        }
+
+        return categoryMatch && seasonMatch && searchMatch;
+    });
 
     return (
         <div className="h-full flex flex-col p-6 md:p-8">
@@ -444,6 +486,15 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                     </div>
                 </div>
 
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-6 max-w-md">
+                <SearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search menu items..."
+                />
             </div>
 
             {/* Categories */}

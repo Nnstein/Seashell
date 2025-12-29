@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, PropsWithChildren } from 'react';
 import { getAvailableMenuItems, placeOrder, getMenuSettings } from '../services/firestoreService';
 import { Language, MenuItem, ViewState } from '../src/types';
+import { useCategoryImages } from '../hooks/useCategoryImages';
 
 // Define CartItem locally as it extends MenuItem with quantity
 export interface CartItem extends MenuItem {
@@ -25,7 +26,7 @@ interface AppState {
   updateInstructions: (cartId: string, instructions: string) => void;
   removeFromCart: (cartId: string) => void;
   resetOrder: () => void;
-  handleCheckout: (paymentMethod: 'room-charge' | 'card') => void;
+  handleCheckout: (paymentMethod: 'room-charge' | 'card' | 'hesabe') => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   animateCart: boolean;
@@ -36,6 +37,12 @@ interface AppState {
   menuItems: MenuItem[];
   loadingMenu: boolean;
   activeSeason: 'Summer' | 'Winter';
+  categoryImages: Record<string, string>;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  chairNumber: string;
+  setChairNumber: (num: string) => void;
+  isBeachGuest: boolean;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -43,7 +50,7 @@ const AppContext = createContext<AppState | undefined>(undefined);
 export const AppProvider = ({ children }: PropsWithChildren) => {
   const [language, setLanguage] = useState<Language>('en');
   const [view, setView] = useState<ViewState>('HOME');
-  const [activeCategory, setActiveCategory] = useState<string>('Hot Beverages');
+  const [activeCategory, setActiveCategory] = useState<string>('Breakfast');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [confirmedOrder, setConfirmedOrder] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -53,6 +60,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [chairNumber, setChairNumber] = useState('');
+
+  const isBeachGuest = roomNumber.toUpperCase().startsWith('B');
+
+  // Use the hook for dynamic images
+  const categoryImages = useCategoryImages();
 
   // Load Menu from Firestore
   useEffect(() => {
@@ -79,7 +93,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         // Set initial category if items exist
         if (filteredItems.length > 0) {
           // Group by category or just set default
-          setActiveCategory('Hot Beverages'); // Updated default
+          setActiveCategory('Breakfast'); // Updated default
         }
       } catch (error) {
         console.error("Failed to load menu:", error);
@@ -147,11 +161,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     ));
   };
 
-  const handleCheckout = async (paymentMethod: 'room-charge' | 'card') => {
+  const handleCheckout = async (paymentMethod: 'room-charge' | 'card' | 'hesabe') => {
     if (cart.length === 0) return;
+
+    if (paymentMethod === 'hesabe') {
+      // Integration pending backend setup per HESABE_INTEGRATION_PLAN.md
+      alert("Redirecting to Hesabe Payment Gateway... (Integration Pending)");
+      // TODO: Call cloud function 'initiateHesabePayment' here
+      return;
+    }
 
     if (!roomNumber) {
       alert("Please enter a room number.");
+      return;
+    }
+
+    if (isBeachGuest && !chairNumber) {
+      alert("Please enter your Chair/Table Number.");
       return;
     }
 
@@ -174,7 +200,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         guestName: 'Guest', // Placeholder, could be fetched if we had guest auth
         totalAmount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         paymentMethod,
-        items: orderItems
+        items: orderItems,
+        ...(isBeachGuest && chairNumber ? { chairNumber } : {})
       });
 
       console.log("DEBUG: Order sent to Firestore successfully.");
@@ -197,7 +224,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     setConfirmedOrder([]);
     setRoomNumber('');
     setView('HOME');
-    setActiveCategory('Hot Beverages');
+    setActiveCategory('Breakfast');
   };
 
   return (
@@ -212,7 +239,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       clearCart,
       isPlacingOrder,
       menuItems,
-      loadingMenu
+      loadingMenu,
+      activeSeason,
+      categoryImages,
+      searchQuery,
+      setSearchQuery,
+      chairNumber,
+      setChairNumber,
+      isBeachGuest
     }}>
       {children}
     </AppContext.Provider>

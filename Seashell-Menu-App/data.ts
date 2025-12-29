@@ -1,10 +1,56 @@
-import { Category, LocalizedString } from './types';
+import { Category, LocalizedString, CategoryData } from './types';
 
-// Helper to generate image URLs
-const getImg = (id: number) => `https://picsum.photos/400/300?random=${id}`;
+// Asset Paths (Local where available, Remote fallback for videos)
+const ASSETS = {
+  landing: '/assets/landing/landing.jpg',
+  categories: {
+    hot: '/assets/images/categories/hot.jpg',
+    cold: '/assets/images/categories/cold.jpg',
+    frappe: '/assets/images/categories/frappe.jpg',
+    appetizers: '/assets/images/categories/appetizers.jpg',
+    pizza: '/assets/images/categories/pizza.jpg',
+    pasta: '/assets/images/categories/pasta.jpg',
+    main: '/assets/images/categories/main.jpg',
+    sweets: '/assets/images/categories/sweets.jpg',
+    smoothies: '/assets/images/categories/smoothies.jpg',
+    milkshakes: '/assets/images/categories/milkshakes.jpg',
+    freshJuices: '/assets/images/categories/fresh-juices.jpg',
+    cocktails: '/assets/images/categories/cocktails.jpg',
+    refreshing: '/assets/images/categories/refreshing.jpg',
+    soups: '/assets/images/categories/soups.jpg',
+    salads: '/assets/images/categories/salads.jpg',
+    risotto: '/assets/images/categories/risotto.jpg',
+    breakfast: '/assets/images/categories/breakfast.jpg',
+    malt: '/assets/images/categories/malt.jpg'
+  },
+  items: {
+    // Breakfast items
+    bk1: '/assets/images/items/bk-1.jpg',
+    bk2: '/assets/images/items/bk-2.jpg',
+    bk3: '/assets/images/items/bk-3.jpg',
+    bk4: '/assets/images/items/bk-4.jpg',
+    bk5: '/assets/images/items/bk-5.jpg',
+    bk6: '/assets/images/items/bk-6.jpg',
+    bk7: '/assets/images/items/bk-7.jpg',
+    bk10: '/assets/images/items/bk-10.jpg',
+    bk11: '/assets/images/items/bk-11.jpg',
+    bk12: '/assets/images/items/bk-12.jpg'
+  },
+  videos: {
+    pasta: '/assets/videos/pasta.mp4',
+    // Remote fallbacks for failed downloads
+    hot: "https://videos.pexels.com/video-files/855018/855018-hd_1920_1080_30fps.mp4",
+    cold: "https://videos.pexels.com/video-files/4109396/4109396-uhd_2560_1440_25fps.mp4",
+    frappe: "https://videos.pexels.com/video-files/3007262/3007262-hd_1920_1080_24fps.mp4",
+    appetizers: "https://videos.pexels.com/video-files/5634926/5634926-uhd_3840_2160_24fps.mp4",
+    pizza: "https://videos.pexels.com/video-files/3015488/3015488-uhd_2560_1440_24fps.mp4",
+    main: "https://videos.pexels.com/video-files/4253255/4253255-uhd_3840_2160_30fps.mp4",
+    sweets: "https://videos.pexels.com/video-files/4689866/4689866-uhd_3840_2160_25fps.mp4",
+    breakfast: "https://videos.pexels.com/video-files/2941916/2941916-uhd_2560_1440_24fps.mp4",
+  }
+};
 
-// Landing Background Image (Distinct from Hot Beverages)
-export const LANDING_IMAGE = "https://images.unsplash.com/photo-1453614512568-c4024d13c247?q=80&w=2832&auto=format&fit=crop";
+export const LANDING_IMAGE = ASSETS.landing;
 
 export const UI_TEXT = {
   viewMenu: { en: "View Menu", ar: "قائمة الطعام" },
@@ -13,7 +59,7 @@ export const UI_TEXT = {
   roomNumber: { en: "Room Number", ar: "رقم الغرفة" },
   myOrder: { en: "My Order", ar: "طلباتي" },
   items: { en: "items", ar: "عناصر" },
-  total: { en: "Total", ar: "المجموع" }, 
+  total: { en: "Total", ar: "المجموع" },
   placeOrder: { en: "Place Order", ar: "تأكيد الطلب" },
   yourOrderEmpty: { en: "Your order is empty", ar: "سلة الطلبات فارغة" },
   exploreMenu: { en: "Explore our menu and add some delicious items.", ar: "تصفح القائمة وأضف بعض الأصناف اللذيذة." },
@@ -27,131 +73,321 @@ export const UI_TEXT = {
   totalPaid: { en: "Total", ar: "الإجمالي" },
   startNew: { en: "Back to Home", ar: "العودة للرئيسية" },
   experienceTaste: { en: "Experience the Taste", ar: "تذوق الفخامة" },
-  welcomeTitle: { en: "Presto Coffee & More", ar: "بريستو كوفي وأكثر" },
-  welcomeSubtitle: { en: "A symphony of flavors, crafted for moments of pure delight.", ar: "سيمفونية من النكهات، صُنعت لتبقى في الذاكرة." }
+  welcomeTitle: { en: "Seashell F&B", ar: "سي شيل للمأكولات والمشروبات" },
+  welcomeSubtitle: { en: "", ar: "" }
 };
 
-// Specific images for categories
+// Category Images Map
 const catImages = {
-  hot: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80",
-  // New working Cold Beverage Image
-  cold: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
-  frappe: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80",
-  appetizers: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=600&q=80",
-  pizza: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80",
-  pasta: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=600&q=80",
-  main: "https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=600&q=80",
-  sweets: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=600&q=80"
+  hot: ASSETS.categories.hot,
+  cold: ASSETS.categories.cold,
+  frappe: ASSETS.categories.frappe,
+  appetizers: ASSETS.categories.appetizers,
+  pizza: ASSETS.categories.pizza,
+  pasta: ASSETS.categories.pasta,
+  main: ASSETS.categories.main,
+  sweets: ASSETS.categories.sweets
 };
 
-// Video backgrounds
+// Category Videos Map
 const catVideos = {
-  hot: "https://videos.pexels.com/video-files/855018/855018-hd_1920_1080_30fps.mp4",
-  cold: "https://videos.pexels.com/video-files/4109396/4109396-uhd_2560_1440_25fps.mp4",
-  frappe: "https://videos.pexels.com/video-files/3007262/3007262-hd_1920_1080_24fps.mp4",
-  appetizers: "https://videos.pexels.com/video-files/5634926/5634926-uhd_3840_2160_24fps.mp4",
-  pizza: "https://videos.pexels.com/video-files/3015488/3015488-uhd_2560_1440_24fps.mp4",
-  pasta: "https://videos.pexels.com/video-files/3209663/3209663-uhd_2560_1440_25fps.mp4",
-  main: "https://videos.pexels.com/video-files/4253255/4253255-uhd_3840_2160_30fps.mp4",
-  sweets: "https://videos.pexels.com/video-files/4689866/4689866-uhd_3840_2160_25fps.mp4"
+  hot: ASSETS.videos.hot,
+  cold: ASSETS.videos.cold,
+  frappe: ASSETS.videos.frappe,
+  appetizers: ASSETS.videos.appetizers,
+  pizza: ASSETS.videos.pizza,
+  pasta: ASSETS.videos.pasta,
+  main: ASSETS.videos.main,
+  sweets: ASSETS.videos.sweets
 };
 
-export const MENU_DATA: Category[] = [
+export const MENU_DATA: CategoryData[] = [
   {
-    id: 'hot-beverages',
+    id: 'Breakfast',
+    name: { en: 'Breakfast', ar: 'الفطور' },
+    image: ASSETS.categories.breakfast,
+    images: [
+      ASSETS.categories.breakfast,
+      "https://images.unsplash.com/photo-1525351484163-7529414395d8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1496042399014-dc73cbb3bce8?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: ASSETS.videos.breakfast,
+    theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-500' },
+    items: [
+      {
+        id: 'bk-1',
+        name: { en: 'Seashell Breakfast', ar: 'إفطار سي شيل' },
+        description: {
+          en: 'Brewed tea or coffee, orange juice, freshly baked croissant, danish, bread rolls and toast, butter and jams, cereal, muesli, yogurt, cheeses, eggs cooked your way, fresh fruits, bacon, sausages, potato, tomato, and mushrooms.',
+          ar: 'شاي أو قهوة، عصير برتقال، كرواسون طازج، دانيش، خبز محمص، زبدة ومربى، حبوب، موسلي، زبادي، أجبان، بيض حسب اختيارك، فواكه طازجة، لحم مقدد، نقانق، بطاطس، طماطم وفطر.'
+        },
+        price: 6.000,
+        category: 'Breakfast',
+        image: ASSETS.items.bk1
+      },
+      {
+        id: 'bk-2',
+        name: { en: 'Mediterranean Breakfast', ar: 'إفطار متوسطي' },
+        description: {
+          en: 'Brewed tea or coffee, orange juice, freshly baked pastries with honey, jam and butter, hummus, white cheese, labneh, tomato, cucumber, olives and pickles, cold cuts, foul, boiled eggs, falafel, and eggs cooked your way.',
+          ar: 'شاي أو قهوة، عصير برتقال، معجنات طازجة مع عسل ومربى وزبدة، حمص، جبنة بيضاء، لبنة، طماطم، خيار، زيتون ومخللات، لحوم باردة، فول، بيض مسلوق، فلافل، وبيض حسب اختيارك.'
+        },
+        price: 5.500,
+        category: 'Breakfast',
+        image: ASSETS.items.bk2
+      },
+      {
+        id: 'bk-3',
+        name: { en: 'Eggs', ar: 'بيض' },
+        description: {
+          en: 'Eggs cooked your way served with beef bacon, chicken sausages, potatoes, peppers, tomatoes, and mushroom.',
+          ar: 'بيض مطهو حسب رغبتك يقدم مع لحم بقري مقدد، نقانق دجاج، بطاطس، فلفل، طماطم وفطر.'
+        },
+        price: 2.000,
+        category: 'Breakfast',
+        image: ASSETS.items.bk3
+      },
+      {
+        id: 'bk-4',
+        name: { en: 'Cheese Plate', ar: 'طبق أجبان' },
+        description: {
+          en: 'A selection of international cheeses served with a freshly baked bread basket.',
+          ar: 'تشكيلة من الأجبان العالمية تقدم مع سلة خبز طازج.'
+        },
+        price: 3.000,
+        category: 'Breakfast',
+        image: ASSETS.items.bk4
+      },
+      {
+        id: 'bk-5',
+        name: { en: 'Pastry Basket', ar: 'سلة معجنات' },
+        description: {
+          en: 'Croissant, assorted Danish, and cinnamon roll.',
+          ar: 'كرواسون، تشكيلة دانيش، ولفائف القرفة.'
+        },
+        price: 2.750,
+        category: 'Breakfast',
+        image: ASSETS.items.bk5
+      },
+      {
+        id: 'bk-6',
+        name: { en: 'Baguette', ar: 'باغيت' },
+        description: { en: 'Freshly baked baguette.', ar: 'خبز باغيت طازج.' },
+        price: 1.100,
+        category: 'Breakfast',
+        image: ASSETS.items.bk6
+      },
+      {
+        id: 'bk-7',
+        name: { en: 'Kraft Corn Loaf', ar: 'خبز الذرة كرافت' },
+        description: { en: 'Freshly baked corn loaf.', ar: 'خبز الذرة الطازج.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: ASSETS.items.bk7
+      },
+      {
+        id: 'bk-8',
+        name: { en: 'Multi Cereal Loaf', ar: 'خبز الحبوب المتعددة' },
+        description: { en: 'Healthy multi-cereal loaf.', ar: 'خبز صحي متعدد الحبوب.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: ASSETS.items.bk7 // Reuse bk7 image
+      },
+      {
+        id: 'bk-9',
+        name: { en: 'Country Loaf', ar: 'خبز ريفي' },
+        description: { en: 'Classic country style loaf.', ar: 'خبز على الطريقة الريفية.' },
+        price: 1.250,
+        category: 'Breakfast',
+        image: ASSETS.items.bk7 // Reuse bk7 image
+      },
+      {
+        id: 'bk-10',
+        name: { en: 'Pancakes & Waffles', ar: 'بان كيك ووافل' },
+        description: {
+          en: 'Choose between pancakes or waffles with either maple syrup, strawberries or chocolate sauce and fruits.',
+          ar: 'اختر بين البان كيك أو الوافل مع شراب القيقب، الفراولة أو صلصة الشوكولاتة والفواكه.'
+        },
+        price: 3.500,
+        category: 'Breakfast',
+        image: ASSETS.items.bk10
+      },
+      {
+        id: 'bk-11',
+        name: { en: 'Cereal', ar: 'حبوب الإفطار' },
+        description: {
+          en: 'Your choice of cornflakes, rice krispies, all bran or muesli. Served with cold or hot milk.',
+          ar: 'اختيارك من الكورن فليكس، رايس كريسبي، أول بران أو موسلي. يقدم مع حليب بارد أو ساخن.'
+        },
+        price: 1.750,
+        category: 'Breakfast',
+        image: ASSETS.items.bk11
+      },
+      {
+        id: 'bk-12',
+        name: { en: 'Fresh Fruits', ar: 'فواكه طازجة' },
+        description: {
+          en: 'A platter of fresh cut seasonal fruits.',
+          ar: 'طبق من الفواكه الموسمية المقطعة طازجة.'
+        },
+        price: 1.500,
+        category: 'Breakfast',
+        image: ASSETS.items.bk12
+      }
+    ]
+  },
+  {
+    id: 'Hot Beverages',
     name: { en: 'Hot Beverages', ar: 'مشروبات ساخنة' },
     image: catImages.hot,
+    images: [catImages.hot],
     video: catVideos.hot,
     theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-600' },
-    items: [
-      { id: 'hb1', name: { en: 'Espresso', ar: 'اسبريسو' }, price: 1.000, category: 'Hot Beverages', image: getImg(1), description: { en: 'Single shot of rich coffee', ar: 'جرعة واحدة من القهوة الغنية' } },
-      { id: 'hb2', name: { en: 'Cappuccino', ar: 'كابتشينو' }, price: 1.500, category: 'Hot Beverages', image: getImg(2), description: { en: 'Espresso with steamed milk foam', ar: 'اسبريسو مع رغوة الحليب المبخر' } },
-      { id: 'hb3', name: { en: 'Latte', ar: 'لاتيه' }, price: 1.500, category: 'Hot Beverages', image: getImg(3), description: { en: 'Espresso with steamed milk', ar: 'اسبريسو مع حليب مبخر' } },
-      { id: 'hb4', name: { en: 'Flat White', ar: 'فلات وايت' }, price: 1.500, category: 'Hot Beverages', image: getImg(4), description: { en: 'Micro-foam milk over espresso', ar: 'رغوة خفيفة فوق الاسبريسو' } },
-      { id: 'hb5', name: { en: 'Caramel Macchiato', ar: 'كراميل ماكياتو' }, price: 1.750, category: 'Hot Beverages', image: getImg(5), description: { en: 'Vanilla syrup, steamed milk, espresso, caramel drizzle', ar: 'شراب الفانيليا، حليب مبخر، اسبريسو، وصلصة الكراميل' } },
-      { id: 'hb6', name: { en: 'Hot Chocolate', ar: 'شوكولاتة ساخنة' }, price: 1.500, category: 'Hot Beverages', image: getImg(6), description: { en: 'Classic rich cocoa', ar: 'كاكاو غني كلاسيكي' } },
-    ]
+    items: []
   },
   {
-    id: 'cold-beverages',
+    id: 'Cold Beverages',
     name: { en: 'Cold Beverages', ar: 'مشروبات باردة' },
     image: catImages.cold,
+    images: [catImages.cold],
     video: catVideos.cold,
     theme: { textColor: 'text-cyan-100', accentColor: 'bg-cyan-600' },
-    items: [
-      { id: 'cb1', name: { en: 'Iced Caffe Americano', ar: 'آيس كافيه أمريكانو' }, price: 1.750, category: 'Cold Beverages', image: getImg(8), description: { en: 'Espresso over ice and water', ar: 'اسبريسو مع ثلج وماء' } },
-      { id: 'cb2', name: { en: 'Iced Caffe Latte', ar: 'آيس كافيه لاتيه' }, price: 1.950, category: 'Cold Beverages', image: getImg(9), description: { en: 'Espresso and cold milk over ice', ar: 'اسبريسو وحليب بارد مع ثلج' } },
-      { id: 'cb3', name: { en: 'Iced Mocha', ar: 'آيس موكا' }, price: 2.000, category: 'Cold Beverages', image: getImg(10), description: { en: 'Espresso, chocolate sauce, milk and ice', ar: 'اسبريسو، صوص شوكولاتة، حليب وثلج' } },
-      { id: 'cb4', name: { en: 'Iced Caramel Macchiato', ar: 'آيس كراميل ماكياتو' }, price: 2.000, category: 'Cold Beverages', image: getImg(11), description: { en: 'Iced espresso with caramel and milk', ar: 'اسبريسو مثلج مع كراميل وحليب' } },
-    ]
+    items: []
   },
   {
-    id: 'frappe',
-    name: { en: "Frappe's", ar: "فرابتشينو" },
+    id: 'Frappes',
+    name: { en: "Frappes", ar: "فرابتشينو" },
     image: catImages.frappe,
+    images: [catImages.frappe],
     video: catVideos.frappe,
     theme: { textColor: 'text-pink-100', accentColor: 'bg-pink-600' },
-    items: [
-      { id: 'fr1', name: { en: 'Caramel Frappé', ar: 'كراميل فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(13), description: { en: 'Blended ice coffee with caramel', ar: 'قهوة مثلجة مخلوطة مع الكراميل' } },
-      { id: 'fr2', name: { en: 'Choco Frappé', ar: 'تشوكو فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(14), description: { en: 'Rich chocolate blended ice drink', ar: 'مشروب مثلج غني بالشوكولاتة' } },
-      { id: 'fr3', name: { en: 'Strawberry Frappé', ar: 'فرولة فرابيه' }, price: 2.250, category: "Frappe's", image: getImg(15), description: { en: 'Sweet strawberry blend', ar: 'مزيج الفراولة الحلو' } },
-    ]
+    items: []
   },
   {
-    id: 'appetizers',
+    id: 'Smoothies',
+    name: { en: 'Smoothies', ar: 'عصائر سموذي' },
+    image: ASSETS.categories.smoothies,
+    images: [ASSETS.categories.smoothies],
+    video: catVideos.cold,
+    theme: { textColor: 'text-green-100', accentColor: 'bg-green-500' },
+    items: []
+  },
+  {
+    id: 'Milkshakes',
+    name: { en: 'Milkshakes', ar: 'ميلك شيك' },
+    image: ASSETS.categories.milkshakes,
+    images: [ASSETS.categories.milkshakes],
+    video: catVideos.frappe,
+    theme: { textColor: 'text-pink-100', accentColor: 'bg-pink-500' },
+    items: []
+  },
+  {
+    id: 'Fresh Juices',
+    name: { en: 'Fresh Juices', ar: 'عصائر طازجة' },
+    image: ASSETS.categories.freshJuices,
+    images: [ASSETS.categories.freshJuices],
+    video: catVideos.cold,
+    theme: { textColor: 'text-orange-100', accentColor: 'bg-orange-500' },
+    items: []
+  },
+  {
+    id: 'Cocktails',
+    name: { en: 'Cocktails', ar: 'كوكتيلات' },
+    image: ASSETS.categories.cocktails,
+    images: [ASSETS.categories.cocktails],
+    video: catVideos.cold,
+    theme: { textColor: 'text-purple-100', accentColor: 'bg-purple-600' },
+    items: []
+  },
+  {
+    id: 'Malt Beverages',
+    name: { en: 'Malt Beverages', ar: 'مشروبات شعير' },
+    image: ASSETS.categories.malt,
+    images: [ASSETS.categories.malt],
+    video: catVideos.cold,
+    theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-700' },
+    items: []
+  },
+  {
+    id: 'Refreshing Drinks',
+    name: { en: 'Refreshing Drinks', ar: 'مشروبات منعشة' },
+    image: ASSETS.categories.refreshing,
+    images: [ASSETS.categories.refreshing],
+    video: catVideos.cold,
+    theme: { textColor: 'text-teal-100', accentColor: 'bg-teal-500' },
+    items: []
+  },
+  {
+    id: 'Appetizers',
     name: { en: 'Appetizers', ar: 'مقبلات' },
     image: catImages.appetizers,
+    images: [catImages.appetizers],
     video: catVideos.appetizers,
     theme: { textColor: 'text-orange-100', accentColor: 'bg-orange-600' },
-    items: [
-      { id: 'ap1', name: { en: 'Bruschetta', ar: 'بروشيتا' }, price: 2.250, category: 'Appetizers', image: getImg(17), description: { en: 'Oven baked sliced bread, topped with tomato, basil', ar: 'خبز محمص بالفرن، مغطى بالطماطم والريحان' } },
-      { id: 'ap2', name: { en: 'Mozzarella Sticks', ar: 'أصابع الموزاريلا' }, price: 2.000, category: 'Appetizers', image: getImg(18), description: { en: '5 pcs of cheese sticks with pomodoro sauce', ar: '٥ قطع من أصابع الجبن مع صلصة البومودورو' } },
-      { id: 'ap3', name: { en: 'Arancini', ar: 'أرانسيني' }, price: 2.500, category: 'Appetizers', image: getImg(19), description: { en: 'Served with tomato and basil sauce', ar: 'تقدم مع صلصة الطماطم والريحان' } },
-    ]
+    items: []
   },
   {
-    id: 'pizza',
-    name: { en: 'Pizzeria Chez Nous', ar: 'بيتزا شينو' },
-    image: catImages.pizza,
-    video: catVideos.pizza,
-    theme: { textColor: 'text-red-100', accentColor: 'bg-red-600' },
-    items: [
-      { id: 'pz1', name: { en: 'Margherita', ar: 'مارغريتا' }, price: 3.250, category: 'Pizza', image: getImg(21), description: { en: 'Tomato Sauce, Mozzarella Cheese', ar: 'صلصة طماطم، جبنة موزاريلا' } },
-      { id: 'pz2', name: { en: 'Quattro Stagioni', ar: 'كواترو ستاجيوني' }, price: 3.500, category: 'Pizza', image: getImg(22), description: { en: 'Tomato Sauce, Mozzarella, Mushrooms', ar: 'صلصة طماطم، موزاريلا، فطر' } },
-      { id: 'pz3', name: { en: 'Pepperoni', ar: 'بيبروني' }, price: 4.000, category: 'Pizza', image: getImg(23), description: { en: 'Tomato Sauce, Mozzarella Cheese, Pepperoni', ar: 'صلصة طماطم، موزاريلا، بيبروني' } },
-    ]
-  },
-  {
-    id: 'pasta',
+    id: 'Italian Pasta',
     name: { en: 'Italian Pasta', ar: 'باستا إيطالية' },
     image: catImages.pasta,
+    images: [catImages.pasta],
     video: catVideos.pasta,
     theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-600' },
-    items: [
-      { id: 'pt1', name: { en: 'Penne Allarrabbiata', ar: 'بيني أرابياتا' }, price: 3.500, category: 'Pasta', image: getImg(25), description: { en: 'Tomato Sauce, Garlic, Crushed Chilly', ar: 'صلصة طماطم، ثوم، فلفل حار' } },
-      { id: 'pt2', name: { en: 'Spaghetti alla Bolognese', ar: 'سباغيتي بولونيز' }, price: 4.000, category: 'Pasta', image: getImg(26), description: { en: 'Tomato Sauce, Minced Beef Meat', ar: 'صلصة طماطم، لحم بقري مفروم' } },
-    ]
+    items: []
   },
   {
-    id: 'main-course',
+    id: 'Soups',
+    name: { en: 'Soups', ar: 'شوربات' },
+    image: ASSETS.categories.soups,
+    images: [ASSETS.categories.soups],
+    video: catVideos.appetizers,
+    theme: { textColor: 'text-amber-100', accentColor: 'bg-amber-700' },
+    items: []
+  },
+  {
+    id: 'Salads',
+    name: { en: 'Salads', ar: 'سلطات' },
+    image: ASSETS.categories.salads,
+    images: [ASSETS.categories.salads],
+    video: catVideos.appetizers,
+    theme: { textColor: 'text-green-100', accentColor: 'bg-green-600' },
+    items: []
+  },
+  {
+    id: 'Risotto',
+    name: { en: 'Risotto', ar: 'ريزوتو' },
+    image: ASSETS.categories.risotto,
+    images: [ASSETS.categories.risotto],
+    video: catVideos.main,
+    theme: { textColor: 'text-yellow-100', accentColor: 'bg-yellow-600' },
+    items: []
+  },
+  {
+    id: 'Pizzeria Chez Nous',
+    name: { en: 'Pizzeria Chez Nous', ar: 'بيتزا شينو' },
+    image: catImages.pizza,
+    images: [catImages.pizza],
+    video: catVideos.pizza,
+    theme: { textColor: 'text-red-100', accentColor: 'bg-red-600' },
+    items: []
+  },
+  {
+    id: 'Main Course',
     name: { en: 'Main Course', ar: 'الطبق الرئيسي' },
     image: catImages.main,
+    images: [catImages.main],
     video: catVideos.main,
     theme: { textColor: 'text-emerald-100', accentColor: 'bg-emerald-700' },
-    items: [
-      { id: 'mc1', name: { en: 'Pollo ai Funghi', ar: 'بولو أي فونغي' }, price: 4.500, category: 'Main Course', image: getImg(29), description: { en: 'Oven roasted chicken Breast with mushroom', ar: 'صدور دجاج مشوية بالفرن مع الفطر' } },
-      { id: 'mc2', name: { en: 'Carne al Forno', ar: 'كارني ال فورنو' }, price: 6.000, category: 'Main Course', image: getImg(30), description: { en: 'Veal Tenderloin, with sauteed green beans', ar: 'تندرلوين العجل، مع فاصوليا خضراء سوتيه' } },
-    ]
+    items: []
   },
   {
-    id: 'sweets',
+    id: 'Sweets and Fruits',
     name: { en: 'Sweets & Fruits', ar: 'حلويات وفواكه' },
     image: catImages.sweets,
+    images: [catImages.sweets],
     video: catVideos.sweets,
     theme: { textColor: 'text-rose-100', accentColor: 'bg-rose-500' },
-    items: [
-      { id: 'sw1', name: { en: 'Philadelphia Cheesecake', ar: 'تشيز كيك فيلادلفيا' }, price: 2.250, category: 'Sweets', image: getImg(33), description: { en: 'Homemade creamy cheesecake', ar: 'تشيز كيك كريمي منزلي الصنع' } },
-      { id: 'sw2', name: { en: 'Chocolate Brownies', ar: 'براونيز شوكولاتة' }, price: 2.250, category: 'Sweets', image: getImg(34), description: { en: 'Homemade rich chocolate brownies', ar: 'براونيز شوكولاتة غنية منزلية الصنع' } },
-    ]
+    items: []
   }
 ];

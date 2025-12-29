@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+public/
+
+# Environment variables (CRITICAL - Never commit these!)
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# Backup files (may contain secrets)
+*_backup.*
+*.backup
+*.bak
+
+# Misc
+*.tsbuildinfo
+.cache/

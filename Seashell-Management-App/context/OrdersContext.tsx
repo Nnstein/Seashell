@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { collection, onSnapshot, doc, updateDoc, orderBy, query, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useOrderNotifications } from '../hooks/useOrderNotifications';
 
 import { Order, OrderStatus } from '../src/types';
 
@@ -10,6 +11,8 @@ interface OrdersContextType {
     orders: Order[];
     loading: boolean;
     updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+    notificationsEnabled: boolean;
+    toggleNotifications: () => void;
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
@@ -17,6 +20,13 @@ const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
 export const OrdersProvider = ({ children }: { children: ReactNode }) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+        const saved = localStorage.getItem('notificationsEnabled');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
+    // Enable notification system
+    useOrderNotifications(notificationsEnabled);
 
     useEffect(() => {
         console.log("DEBUG: Setting up orders listener...");
@@ -58,8 +68,16 @@ export const OrdersProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const toggleNotifications = () => {
+        setNotificationsEnabled(prev => {
+            const newValue = !prev;
+            localStorage.setItem('notificationsEnabled', JSON.stringify(newValue));
+            return newValue;
+        });
+    };
+
     return (
-        <OrdersContext.Provider value={{ orders, loading, updateOrderStatus }}>
+        <OrdersContext.Provider value={{ orders, loading, updateOrderStatus, notificationsEnabled, toggleNotifications }}>
             {children}
         </OrdersContext.Provider>
     );
