@@ -1,24 +1,31 @@
-// Notification sound utility using Web Audio API
+// Notification sound utility with looping support
+let notificationAudio: HTMLAudioElement | null = null;
+let vibrationInterval: number | null = null;
+
 export const playNotificationSound = () => {
     try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+        if (!notificationAudio) {
+            notificationAudio = new Audio('/notification/new-order-notification.mp3');
+            notificationAudio.loop = true;
+        }
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        // Pleasant notification tone (C5 and E5)
-        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
+        // Play the audio
+        notificationAudio.play().catch(error => {
+            console.warn('Could not play notification sound:', error);
+        });
     } catch (error) {
-        console.warn('Could not play notification sound:', error);
+        console.warn('Could not initialize notification sound:', error);
+    }
+};
+
+export const stopNotificationSound = () => {
+    try {
+        if (notificationAudio) {
+            notificationAudio.pause();
+            notificationAudio.currentTime = 0;
+        }
+    } catch (error) {
+        console.warn('Could not stop notification sound:', error);
     }
 };
 
@@ -33,6 +40,36 @@ export const vibrateDevice = () => {
     }
 };
 
+export const startVibrationLoop = () => {
+    stopVibrationLoop(); // Clear any existing interval
+
+    // Vibrate immediately
+    vibrateDevice();
+
+    // Then vibrate every 3 seconds
+    vibrationInterval = window.setInterval(() => {
+        vibrateDevice();
+    }, 3000);
+};
+
+export const stopVibrationLoop = () => {
+    if (vibrationInterval !== null) {
+        clearInterval(vibrationInterval);
+        vibrationInterval = null;
+    }
+};
+
+export const startNotificationLoop = () => {
+    playNotificationSound();
+    startVibrationLoop();
+};
+
+export const stopNotificationLoop = () => {
+    stopNotificationSound();
+    stopVibrationLoop();
+};
+
+// Legacy function for backward compatibility
 export const triggerNotification = () => {
     playNotificationSound();
     vibrateDevice();

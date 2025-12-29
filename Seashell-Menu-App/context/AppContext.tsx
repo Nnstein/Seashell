@@ -32,6 +32,8 @@ interface AppState {
   animateCart: boolean;
   roomNumber: string;
   setRoomNumber: (room: string) => void;
+  phoneNumber: string;
+  setPhoneNumber: (phone: string) => void;
   isPlacingOrder: boolean;
   clearCart: () => void;
   menuItems: MenuItem[];
@@ -43,6 +45,8 @@ interface AppState {
   chairNumber: string;
   setChairNumber: (num: string) => void;
   isBeachGuest: boolean;
+  saveSession: (room: string, phone: string) => void;
+  clearSession: () => void;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -56,6 +60,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [animateCart, setAnimateCart] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -64,6 +69,55 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [chairNumber, setChairNumber] = useState('');
 
   const isBeachGuest = roomNumber.toUpperCase().startsWith('B');
+
+  // Session management constants
+  const SESSION_KEY = 'seashell_guest_session';
+  const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+  // Save session to localStorage
+  const saveSession = (room: string, phone: string) => {
+    const session = {
+      roomNumber: room,
+      phoneNumber: phone,
+      expiresAt: Date.now() + SESSION_DURATION
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  };
+
+  // Load session from localStorage
+  const loadSession = () => {
+    try {
+      const sessionStr = localStorage.getItem(SESSION_KEY);
+      if (!sessionStr) return null;
+
+      const session = JSON.parse(sessionStr);
+      if (Date.now() > session.expiresAt) {
+        // Session expired
+        localStorage.removeItem(SESSION_KEY);
+        return null;
+      }
+
+      return session;
+    } catch (error) {
+      console.error('Error loading session:', error);
+      return null;
+    }
+  };
+
+  // Clear session
+  const clearSession = () => {
+    localStorage.removeItem(SESSION_KEY);
+  };
+
+  // Auto-restore session on mount
+  useEffect(() => {
+    const session = loadSession();
+    if (session) {
+      setRoomNumber(session.roomNumber);
+      setPhoneNumber(session.phoneNumber);
+      setView('MENU');
+    }
+  }, []);
 
   // Use the hook for dynamic images
   const categoryImages = useCategoryImages();
@@ -176,6 +230,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       return;
     }
 
+    if (!phoneNumber) {
+      alert("Please enter a phone number.");
+      return;
+    }
+
     if (isBeachGuest && !chairNumber) {
       alert("Please enter your Chair/Table Number.");
       return;
@@ -197,6 +256,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
       await placeOrder({
         roomNumber,
+        phoneNumber,
         guestName: 'Guest', // Placeholder, could be fetched if we had guest auth
         totalAmount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
         paymentMethod,
@@ -222,8 +282,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const resetOrder = () => {
     setCart([]);
     setConfirmedOrder([]);
-    setRoomNumber('');
-    setView('HOME');
+    // Don't clear room/phone - keep session active
+    // Don't clear session from localStorage
+    setView('MENU'); // Go back to menu instead of home
     setActiveCategory('Breakfast');
   };
 
@@ -236,6 +297,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       isCartOpen, setIsCartOpen,
       animateCart,
       roomNumber, setRoomNumber,
+      phoneNumber, setPhoneNumber,
       clearCart,
       isPlacingOrder,
       menuItems,
@@ -246,7 +308,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       setSearchQuery,
       chairNumber,
       setChairNumber,
-      isBeachGuest
+      isBeachGuest,
+      saveSession,
+      clearSession
     }}>
       {children}
     </AppContext.Provider>

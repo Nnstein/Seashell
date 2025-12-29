@@ -237,6 +237,9 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                 <td className="px-6 py-4 font-medium text-ink">
                                                     <div>{order.guestName || 'Guest'}</div>
                                                     <div className="text-xs text-slate-400 mb-1">Rm {order.roomNumber}</div>
+                                                    {order.phoneNumber && (
+                                                        <div className="text-xs text-slate-400 mb-1">📞 {order.phoneNumber}</div>
+                                                    )}
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${order.paymentMethod === 'card'
                                                         ? 'bg-purple-50 text-purple-700 border-purple-200'
                                                         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -251,7 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                         </div>
                                                     ))}
                                                 </td>
-                                                <td className="px-6 py-4 font-serif font-bold text-ink">${order.totalAmount.toFixed(2)}</td>
+                                                <td className="px-6 py-4 font-serif font-bold text-ink">{order.totalAmount.toFixed(3)} KD</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex px-3 py-1 text-xs font-bold tracking-wider uppercase border
                                             ${order.status === 'pending' ? 'bg-blue-50 text-blue-800 border-blue-100' : ''}

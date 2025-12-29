@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { User, Order, MenuItem, OrderStatus } from './src/types';
-import { getMenuItems } from './services/firestoreService';
+import { getMenuItems, archiveCompletedOrders } from './services/firestoreService';
 import { useOrders } from './context/OrdersContext';
 import Dashboard from './components/Dashboard';
 import MenuEditor from './components/MenuEditor';
+import OrderHistory from './components/OrderHistory';
 import Login from './components/Login';
-import { LayoutDashboard, UtensilsCrossed, LogOut, Shell, Menu, X } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, LogOut, Shell, Menu, X, History } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'menu'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'menu' | 'history'>('dashboard');
   const { orders, loading, updateOrderStatus } = useOrders();
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Load data from Firestore
+  // Load data from Firestore and archive old orders
   useEffect(() => {
     loadMenu();
+    archiveOldOrders();
   }, []);
 
   const loadMenu = async () => {
@@ -36,7 +38,18 @@ const App: React.FC = () => {
     loadMenu();
   };
 
-  const handleNavClick = (tab: 'dashboard' | 'menu') => {
+  const archiveOldOrders = async () => {
+    try {
+      const count = await archiveCompletedOrders();
+      if (count > 0) {
+        console.log(`Archived ${count} completed orders`);
+      }
+    } catch (error) {
+      console.error('Error archiving orders:', error);
+    }
+  };
+
+  const handleNavClick = (tab: 'dashboard' | 'menu' | 'history') => {
     setActiveTab(tab);
     setIsSidebarOpen(false);
   };
@@ -101,6 +114,14 @@ const App: React.FC = () => {
             <UtensilsCrossed size={20} className={`mr-3 ${activeTab === 'menu' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
             <span className="text-sm font-medium tracking-wide">Menu Editor</span>
           </button>
+          <button
+            onClick={() => handleNavClick('history')}
+            className={`w-full flex items-center px-4 py-3 rounded transition-all duration-300 group
+                ${activeTab === 'history' ? 'bg-slate-800 text-gold border-l-2 border-gold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+          >
+            <History size={20} className={`mr-3 ${activeTab === 'history' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
+            <span className="text-sm font-medium tracking-wide">Order History</span>
+          </button>
         </nav>
 
         <div className="p-6 border-t border-slate-800">
@@ -140,6 +161,9 @@ const App: React.FC = () => {
             )}
             {activeTab === 'menu' && (
               <MenuEditor menu={menu} onUpdate={handleMenuUpdate} />
+            )}
+            {activeTab === 'history' && (
+              <OrderHistory />
             )}
           </div>
         </div>

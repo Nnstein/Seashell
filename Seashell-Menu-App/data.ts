@@ -55,8 +55,10 @@ export const LANDING_IMAGE = ASSETS.landing;
 export const UI_TEXT = {
   viewMenu: { en: "View Menu", ar: "قائمة الطعام" },
   enterRoom: { en: "Enter Room Number", ar: "أدخل رقم الغرفة" },
+  enterPhone: { en: "Enter Phone Number", ar: "أدخل رقم الهاتف" },
   enterRoomPrompt: { en: "Please enter your room number to order", ar: "الرجاء إدخال رقم الغرفة للطلب" },
   roomNumber: { en: "Room Number", ar: "رقم الغرفة" },
+  phoneNumber: { en: "Phone Number", ar: "رقم الهاتف" },
   myOrder: { en: "My Order", ar: "طلباتي" },
   items: { en: "items", ar: "عناصر" },
   total: { en: "Total", ar: "المجموع" },

@@ -79,10 +79,11 @@ export interface Order {
     guestId?: string;
     status: OrderStatus;
     totalAmount: number;
-    paymentMethod?: 'cash' | 'card' | 'room-charge';
+    paymentMethod?: 'cash' | 'card' | 'room-charge' | 'hesabe';
     createdAt: number;
     items: OrderItem[];
     chairNumber?: string; // For Beach Guests
+    phoneNumber?: string;
 }
 
 export interface Guest {
