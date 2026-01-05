@@ -45,6 +45,7 @@ export interface MenuItem {
     price: number;
     category: Category;
     menuType: 'All Day' | 'Breakfast' | 'Lunch' | 'Dinner';
+    menu?: 'presto' | 'room-service'; // Which menu this item belongs to
     isAvailable: boolean;
     imageUrl?: string;
     image?: string; // For backward compatibility
@@ -56,6 +57,20 @@ export interface MenuItem {
     sizes?: { name: string; price: number }[];
     addons?: { name: string; price: number }[];
     note?: string; // e.g. "Served with cream"
+    tags?: ('spicy' | 'vegetarian' | 'nuts' | 'traditional')[]; // Dietary/special indicators
+
+    // === DISCOUNT FIELDS (Optional - backward compatible) ===
+
+    // Item-level discount: Show discounted price with label
+    discountPrice?: number;           // The new discounted price (e.g., 2.500 instead of 3.500)
+    discountLabel?: string;           // Label shown on item (e.g., "Winter Special!", "Happy Hour")
+
+    // Bundle pricing: Quantity-based discounts (e.g., "3 for 8.750 KD")
+    bundlePricing?: {
+        quantity: number;             // Number of items needed (e.g., 3)
+        price: number;                // Bundle price (e.g., 8.750)
+        label?: string;               // Optional label (e.g., "Family Deal")
+    }[];
 }
 
 export interface OrderItem {
@@ -68,6 +83,19 @@ export interface OrderItem {
     selectedSize?: string;
     selectedAddons?: string[];
     specialInstructions?: string;
+
+    // Pricing fields for discounts and bundles
+    unitPrice?: number;           // Price per item (after size/addons)
+    effectiveTotal?: number;      // Final price for this line (after discounts/bundles)
+    originalTotal?: number;       // What it would cost without discounts
+    savings?: number;             // Amount saved
+    appliedBundle?: {
+        quantity: number;
+        price: number;
+        label?: string;
+    };
+    hasDiscount?: boolean;
+    hasBundlePricing?: boolean;
 }
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled' | 'completed';
@@ -84,6 +112,7 @@ export interface Order {
     items: OrderItem[];
     chairNumber?: string; // For Beach Guests
     phoneNumber?: string;
+    menu?: 'presto' | 'room-service'; // Which menu this order was placed from
 }
 
 export interface Guest {
@@ -104,7 +133,8 @@ export interface User {
 export interface MenuSettings {
     id: string; // 'global_settings'
     activeSeason: 'Summer' | 'Winter';
+    activeMenu: 'presto' | 'room-service'; // Which menu is currently active for guests
 }
 
 export type Language = 'en' | 'ar';
-export type ViewState = 'HOME' | 'CART' | 'CONFIRMATION' | 'ORDER_TRACKING';
+export type ViewState = 'HOME' | 'MENU' | 'CART' | 'CONFIRMATION' | 'ORDER_TRACKING';

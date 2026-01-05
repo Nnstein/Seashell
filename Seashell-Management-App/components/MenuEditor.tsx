@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MenuItem, Category } from '../src/types';
-import { CATEGORIES } from '../constants';
+import { getCategoriesByMenu } from '../constants';
 import { generateMenuDescription } from '../services/geminiService';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuItems, updateMenuSettings, getMenuSettings } from '../services/firestoreService';
 import { uploadImage } from '../services/storageService';
@@ -19,14 +19,20 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [viewSeason, setViewSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
+    const [viewMenu, setViewMenu] = useState<'presto' | 'room-service'>('room-service');
+    const [activeMenu, setActiveMenu] = useState<'presto' | 'room-service'>('room-service');
     const [hasExistingData, setHasExistingData] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Load active season on mount
+    // Load active season and menu on mount
     const init = async () => {
         if (menu.length > 0) setHasExistingData(true);
         const settings = await getMenuSettings();
-        if (settings) setActiveSeason(settings.activeSeason);
+        if (settings) {
+            setActiveSeason(settings.activeSeason);
+            setActiveMenu(settings.activeMenu || 'room-service');
+            setViewMenu(settings.activeMenu || 'room-service');
+        }
     };
 
     useEffect(() => {
@@ -39,15 +45,18 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
     };
 
     const handleAddNew = () => {
+        // Get the first category for the current menu view
+        const defaultCategory = getCategoriesByMenu(viewMenu)[0] || 'Breakfast';
         setEditingItem({
             name: '',
             description: '',
             price: 0,
-            category: 'Main Course', // Updated default
+            category: defaultCategory as Category,
             menuType: 'All Day',
             image: `https://picsum.photos/400/300?random=${Math.floor(Math.random() * 100)}`,
             isAvailable: true,
-            season: viewSeason
+            season: viewSeason,
+            menu: viewMenu // Lock to current view menu
         });
         setIsModalOpen(true);
     };
@@ -397,6 +406,9 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         // Filter by season
         const seasonMatch = item.season === viewSeason || (!item.season && viewSeason === 'Summer');
 
+        // Filter by menu
+        const menuMatch = item.menu === viewMenu || (!item.menu && viewMenu === 'room-service');
+
         // Filter by search query
         let searchMatch = true;
         if (searchQuery.trim()) {
@@ -412,37 +424,97 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
             );
         }
 
-        return categoryMatch && seasonMatch && searchMatch;
+        return categoryMatch && seasonMatch && menuMatch && searchMatch;
     });
 
     return (
-        <div className="h-full flex flex-col p-6 md:p-8">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h2 className="text-3xl font-serif font-bold text-ink">Menu Curation</h2>
-                    <p className="text-slate-500 font-serif italic mt-1">Design the guest dining experience</p>
+        <div className="h-full flex flex-col p-4 sm:p-6 md:p-8 overflow-x-hidden">
+            {/* Header - Responsive */}
+            <div className="flex flex-col gap-4 mb-6 sm:mb-8">
+                {/* Title Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-ink truncate">Menu Curation</h2>
+                        <p className="text-slate-500 font-serif italic mt-1 text-sm sm:text-base">Design the guest dining experience</p>
+                    </div>
+
+                    {/* Add New Button - Always visible */}
+                    <div className="flex gap-2 flex-shrink-0">
+                        <button
+                            onClick={handleSeedDatabase}
+                            className="px-3 py-2 sm:px-4 sm:py-3 transition-colors font-bold uppercase tracking-wider text-[10px] sm:text-xs flex items-center shadow-sm rounded bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            title="Seed database with initial data"
+                        >
+                            <Sparkles size={14} className="mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Seed DB</span>
+                            <span className="sm:hidden">Seed</span>
+                        </button>
+                        <button
+                            onClick={handleAddNew}
+                            className="bg-ink text-white hover:bg-gold hover:text-ink px-4 py-2 sm:px-6 sm:py-3 transition-colors font-bold uppercase tracking-wider text-[10px] sm:text-xs flex items-center shadow-lg rounded"
+                        >
+                            <Plus size={14} className="mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Add New Dish</span>
+                            <span className="sm:hidden">Add</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
+                {/* Controls Row - Responsive Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Menu Switcher */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-between">
+                        <div className="flex flex-1">
+                            <button
+                                onClick={() => {
+                                    setViewMenu('presto');
+                                    setFilterCategory('All');
+                                }}
+                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'presto' ? 'bg-gold text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                            >
+                                Presto
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setViewMenu('room-service');
+                                    setFilterCategory('All');
+                                }}
+                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'room-service' ? 'bg-purple-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                            >
+                                Room Svc
+                            </button>
+                        </div>
+                        {activeMenu !== viewMenu && (
+                            <button
+                                onClick={async () => {
+                                    if (window.confirm(`Make ${viewMenu === 'presto' ? 'Presto' : 'Room Service'} menu live?`)) {
+                                        await updateMenuSettings({ activeMenu: viewMenu });
+                                        setActiveMenu(viewMenu);
+                                    }
+                                }}
+                                className="ml-1 flex items-center gap-1 px-2 py-1.5 bg-green-500 text-white text-[10px] font-bold uppercase rounded hover:bg-green-600"
+                            >
+                                <CheckCircle size={12} />
+                            </button>
+                        )}
+                    </div>
+
                     {/* Season Switcher */}
-                    {/* Season Switcher */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center gap-2">
-                        <div className="flex">
+                    <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-between">
+                        <div className="flex flex-1">
                             <button
                                 onClick={() => setViewSeason('Summer')}
-                                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewSeason === 'Summer' ? 'bg-gold text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewSeason === 'Summer' ? 'bg-gold text-white' : 'text-slate-500 hover:bg-slate-50'}`}
                             >
                                 Summer
                             </button>
                             <button
                                 onClick={() => setViewSeason('Winter')}
-                                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewSeason === 'Winter' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewSeason === 'Winter' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
                             >
                                 Winter
                             </button>
                         </div>
-
-                        {/* Explicit Publish Button */}
                         {activeSeason !== viewSeason && (
                             <button
                                 onClick={async () => {
@@ -451,65 +523,49 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                         setActiveSeason(viewSeason);
                                     }
                                 }}
-                                className="ml-2 px-3 py-1 bg-green-500 text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-green-600 transition-colors shadow-sm"
+                                className="ml-1 px-2 py-1.5 bg-green-500 text-white text-[10px] font-bold uppercase rounded hover:bg-green-600"
                             >
-                                Publish {viewSeason}
+                                <CheckCircle size={12} />
                             </button>
                         )}
                     </div>
 
-                    {/* Live Indicator (Read Only) */}
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Live:</span>
-                        <div
-                            className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider transition-colors ${activeSeason === 'Summer' ? 'bg-gold/10 text-gold' : 'bg-blue-500/10 text-blue-500'}`}
-                        >
-                            {activeSeason === 'Summer' ? <Sparkles size={14} /> : <Calendar size={14} />}
+                    {/* Live Indicator */}
+                    <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-center gap-2">
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Live:</span>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase ${activeMenu === 'presto' ? 'bg-gold/10 text-gold' : 'bg-purple-500/10 text-purple-600'}`}>
+                            {activeMenu === 'presto' ? 'Presto' : 'Room'}
+                        </div>
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase ${activeSeason === 'Summer' ? 'bg-gold/10 text-gold' : 'bg-blue-500/10 text-blue-500'}`}>
+                            {activeSeason === 'Summer' ? <Sparkles size={12} /> : <Calendar size={12} />}
                             {activeSeason}
                         </div>
                     </div>
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleSeedDatabase}
-                            className="px-4 py-3 transition-colors font-bold uppercase tracking-wider text-xs flex items-center shadow-sm rounded bg-slate-200 text-slate-700 hover:bg-slate-300"
-                            title="Seed database with initial data (will replace existing)"
-                        >
-                            <Sparkles size={16} className="mr-2" /> Seed DB
-                        </button>
-                        <button
-                            onClick={handleAddNew}
-                            className="bg-ink text-white hover:bg-gold hover:text-ink px-6 py-3 transition-colors font-bold uppercase tracking-wider text-xs flex items-center shadow-lg"
-                        >
-                            <Plus size={16} className="mr-2" /> Add New Dish
-                        </button>
+                    {/* Search Bar */}
+                    <div className="sm:col-span-2 lg:col-span-1">
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder="Search menu..."
+                        />
                     </div>
                 </div>
-
             </div>
 
-            {/* Search Bar */}
-            <div className="mb-6 max-w-md">
-                <SearchBar
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    placeholder="Search menu items..."
-                />
-            </div>
-
-            {/* Categories */}
-            <div className="flex space-x-2 mb-6 overflow-x-auto pb-2 border-b-2 border-slate-200 bg-paper flex-shrink-0">
+            {/* Categories - Horizontal scroll on mobile */}
+            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 border-b-2 border-slate-200 flex-shrink-0 scrollbar-hide">
                 <button
                     onClick={() => setFilterCategory('All')}
-                    className={`px-6 py-2 font-serif text-sm transition-all whitespace-nowrap border ${filterCategory === 'All' ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
+                    className={`px-3 sm:px-6 py-2 font-serif text-xs sm:text-sm transition-all whitespace-nowrap border rounded-lg flex-shrink-0 ${filterCategory === 'All' ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
                 >
-                    All Collection
+                    All
                 </button>
-                {CATEGORIES.map(cat => (
+                {getCategoriesByMenu(viewMenu).map(cat => (
                     <button
                         key={cat}
                         onClick={() => setFilterCategory(cat as Category)}
-                        className={`px-6 py-2 font-serif text-sm transition-all whitespace-nowrap border ${filterCategory === cat ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
+                        className={`px-3 sm:px-6 py-2 font-serif text-xs sm:text-sm transition-all whitespace-nowrap border rounded-lg flex-shrink-0 ${filterCategory === cat ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
                     >
                         {cat}
                     </button>
@@ -518,7 +574,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
 
             {/* Grid - Scrollable Container */}
             <div className="flex-1 overflow-y-auto min-h-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 pb-20">
                     {filteredMenu.map(item => (
                         <div key={item.id} className="bg-white p-4 group hover:shadow-xl transition-all duration-500 border border-slate-100 relative flex flex-col">
                             <div className="h-48 overflow-hidden mb-4 relative">
@@ -555,8 +611,38 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     <h3 className="font-serif font-bold text-lg text-ink leading-tight group-hover:text-gold transition-colors">
                                         {typeof item.name === 'object' ? item.name.en : item.name}
                                     </h3>
-                                    <span className="font-serif font-bold text-ink ml-2">{item.price.toFixed(3)} KD</span>
+                                    <div className="flex flex-col items-end ml-2">
+                                        {/* Show discount pricing */}
+                                        {item.discountPrice && item.discountPrice < item.price ? (
+                                            <>
+                                                <span className="font-sans text-xs text-slate-400 line-through">{item.price.toFixed(3)}</span>
+                                                <span className="font-serif font-bold text-red-600">{item.discountPrice.toFixed(3)} KD</span>
+                                            </>
+                                        ) : (
+                                            <span className="font-serif font-bold text-ink">{item.price.toFixed(3)} KD</span>
+                                        )}
+                                    </div>
                                 </div>
+
+                                {/* Discount & Bundle Badges */}
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                    {item.discountPrice && item.discountPrice < item.price && (
+                                        <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            🏷️ {Math.round(((item.price - item.discountPrice) / item.price) * 100)}% OFF
+                                        </span>
+                                    )}
+                                    {item.discountLabel && (
+                                        <span className="bg-amber-100 text-amber-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                            {item.discountLabel}
+                                        </span>
+                                    )}
+                                    {item.bundlePricing && item.bundlePricing.length > 0 && (
+                                        <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            📦 {item.bundlePricing.length} Bundle{item.bundlePricing.length > 1 ? 's' : ''}
+                                        </span>
+                                    )}
+                                </div>
+
                                 <p className="text-slate-500 text-sm line-clamp-3 font-light leading-relaxed">
                                     {typeof item.description === 'object' ? item.description.en : item.description}
                                 </p>
@@ -569,17 +655,17 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
             {/* Edit Modal */}
             {
                 isModalOpen && editingItem && (
-                    <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-paper w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border-t-8 border-gold animate-in fade-in zoom-in-95 duration-300 flex flex-col">
-                            <div className="p-8 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-paper z-10">
-                                <div>
-                                    <h3 className="text-2xl font-serif font-bold text-ink">{editingItem.id?.length! > 5 ? 'Edit Masterpiece' : 'New Creation'}</h3>
-                                    <p className="text-slate-500 italic font-serif text-sm">Refine the culinary details</p>
+                    <div className="fixed inset-0 bg-ink/80 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+                        <div className="bg-paper w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border-t-4 sm:border-t-8 border-gold animate-in fade-in zoom-in-95 duration-300 flex flex-col my-2 sm:my-0">
+                            <div className="p-4 sm:p-6 md:p-8 border-b border-slate-200 flex justify-between items-start sticky top-0 bg-paper z-10">
+                                <div className="min-w-0 flex-1 mr-4">
+                                    <h3 className="text-lg sm:text-2xl font-serif font-bold text-ink truncate">{editingItem.id?.length! > 5 ? 'Edit Masterpiece' : 'New Creation'}</h3>
+                                    <p className="text-slate-500 italic font-serif text-xs sm:text-sm">Refine the culinary details</p>
                                 </div>
-                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-ink transition-colors"><X size={24} /></button>
+                                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-ink transition-colors flex-shrink-0 p-1"><X size={20} /></button>
                             </div>
 
-                            <div className="p-8 space-y-6">
+                            <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
                                 {/* High contrast input group */}
                                 <div className="space-y-1">
                                     <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Dish Name</label>
@@ -592,16 +678,21 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                     <div className="space-y-1">
-                                        <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Category</label>
+                                        <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">
+                                            Category
+                                            <span className={`ml-2 text-[10px] px-2 py-0.5 rounded ${editingItem.menu === 'presto' ? 'bg-gold/20 text-gold' : 'bg-purple-500/20 text-purple-600'}`}>
+                                                {editingItem.menu === 'presto' ? 'Presto' : 'Room Service'}
+                                            </span>
+                                        </label>
                                         <div className="relative">
                                             <select
                                                 value={editingItem.category}
                                                 onChange={e => setEditingItem({ ...editingItem, category: e.target.value as Category })}
                                                 className="w-full p-3 border-2 border-slate-300 text-ink font-sans bg-white focus:border-gold focus:ring-0 outline-none appearance-none cursor-pointer shadow-sm"
                                             >
-                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                {getCategoriesByMenu(editingItem.menu || 'room-service').map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">▼</div>
                                         </div>
@@ -620,11 +711,11 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     </div>
                                 </div>
 
-                                {/* Season & Note */}
-                                <div className="grid grid-cols-2 gap-6">
+                                {/* Season, Menu & Note */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                     <div className="space-y-1">
                                         <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Season</label>
-                                        <div className="flex gap-4 p-3 border-2 border-slate-300 bg-white">
+                                        <div className="flex gap-2 sm:gap-4 p-2 sm:p-3 border-2 border-slate-300 bg-white">
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="radio"
@@ -648,6 +739,44 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                                 <span className="text-sm font-serif">Winter</span>
                                             </label>
                                         </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Menu</label>
+                                        <div className={`flex gap-2 sm:gap-4 p-2 sm:p-3 border-2 bg-white ${editingItem.menu === 'presto' ? 'border-gold' : 'border-purple-500'}`}>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="menu"
+                                                    value="presto"
+                                                    checked={editingItem.menu === 'presto'}
+                                                    onChange={() => {
+                                                        const newCategory = getCategoriesByMenu('presto')[0] || 'Hot Beverages';
+                                                        setEditingItem({ ...editingItem, menu: 'presto', category: newCategory as Category });
+                                                    }}
+                                                    className="text-gold focus:ring-gold"
+                                                />
+                                                <span className={`text-sm font-serif ${editingItem.menu === 'presto' ? 'font-bold text-gold' : ''}`}>Presto</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="menu"
+                                                    value="room-service"
+                                                    checked={editingItem.menu === 'room-service'}
+                                                    onChange={() => {
+                                                        const newCategory = getCategoriesByMenu('room-service')[0] || 'Breakfast';
+                                                        setEditingItem({ ...editingItem, menu: 'room-service', category: newCategory as Category });
+                                                    }}
+                                                    className="text-purple-500 focus:ring-purple-500"
+                                                />
+                                                <span className={`text-sm font-serif ${editingItem.menu === 'room-service' ? 'font-bold text-purple-600' : ''}`}>Room Service</span>
+                                            </label>
+                                        </div>
+                                        {editingItem.menu !== viewMenu && (
+                                            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                                ⚠️ Warning: This item is in a different menu than currently viewing.
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-1">
                                         <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Note</label>
@@ -757,6 +886,145 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                         </div>
                                     ))}
                                     {(!editingItem.addons || editingItem.addons.length === 0) && <p className="text-xs text-slate-400 italic">No addons defined.</p>}
+                                </div>
+
+                                {/* === DISCOUNT SECTION === */}
+                                <div className="space-y-4 bg-red-50 p-4 border border-red-200 rounded">
+                                    <div className="flex justify-between items-center">
+                                        <label className="block text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-2">
+                                            🏷️ Item Discount
+                                        </label>
+                                        <button
+                                            onClick={() => {
+                                                if (editingItem.discountPrice) {
+                                                    // Clear discount
+                                                    setEditingItem({ ...editingItem, discountPrice: undefined, discountLabel: undefined });
+                                                } else {
+                                                    // Enable discount with 10% off default
+                                                    const discounted = Math.round((editingItem.price || 0) * 0.9 * 1000) / 1000;
+                                                    setEditingItem({ ...editingItem, discountPrice: discounted, discountLabel: 'Special Offer!' });
+                                                }
+                                            }}
+                                            className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded ${editingItem.discountPrice
+                                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                                : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                                                }`}
+                                        >
+                                            {editingItem.discountPrice ? '✓ Discount Active' : 'Add Discount'}
+                                        </button>
+                                    </div>
+
+                                    {editingItem.discountPrice !== undefined && (
+                                        <div className="space-y-3">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-xs text-red-600 mb-1">Original Price</label>
+                                                    <div className="p-2 bg-white border border-red-200 text-slate-500 line-through text-sm">
+                                                        {(editingItem.price || 0).toFixed(3)} KD
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs text-red-600 mb-1">Discounted Price *</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.001"
+                                                        value={editingItem.discountPrice || ''}
+                                                        onChange={e => setEditingItem({ ...editingItem, discountPrice: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full p-2 border-2 border-red-400 text-sm bg-white font-bold text-red-700"
+                                                        placeholder="New Price"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-red-600 mb-1">Discount Label (shown to guests)</label>
+                                                <input
+                                                    type="text"
+                                                    value={editingItem.discountLabel || ''}
+                                                    onChange={e => setEditingItem({ ...editingItem, discountLabel: e.target.value })}
+                                                    className="w-full p-2 border border-red-300 text-sm bg-white"
+                                                    placeholder="e.g., Winter Special!, Happy Hour, 20% OFF"
+                                                />
+                                            </div>
+                                            {editingItem.discountPrice && editingItem.price && editingItem.discountPrice < editingItem.price && (
+                                                <div className="text-xs text-red-600 font-medium">
+                                                    💰 Savings: {Math.round(((editingItem.price - editingItem.discountPrice) / editingItem.price) * 100)}% off
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* === BUNDLE PRICING SECTION === */}
+                                <div className="space-y-2 bg-purple-50 p-4 border border-purple-200 rounded">
+                                    <div className="flex justify-between items-center">
+                                        <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-2">
+                                            📦 Bundle Pricing
+                                        </label>
+                                        <button
+                                            onClick={() => setEditingItem({
+                                                ...editingItem,
+                                                bundlePricing: [...(editingItem.bundlePricing || []), { quantity: 2, price: 0, label: '' }]
+                                            })}
+                                            className="text-xs text-purple-700 font-bold uppercase tracking-wider flex items-center hover:text-purple-900 bg-purple-100 px-2 py-1 rounded border border-purple-300"
+                                        >
+                                            <Plus size={12} className="mr-1" /> Add Bundle Tier
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-purple-600 italic">e.g., "3 pizzas for 8.750 KD" instead of individual pricing</p>
+
+                                    {editingItem.bundlePricing?.map((bundle, index) => (
+                                        <div key={index} className="flex gap-2 items-center bg-white p-2 rounded border border-purple-200">
+                                            <span className="text-xs text-purple-600 font-medium">Buy</span>
+                                            <input
+                                                type="number"
+                                                min="2"
+                                                value={bundle.quantity}
+                                                onChange={e => {
+                                                    const newBundles = [...editingItem.bundlePricing!];
+                                                    newBundles[index].quantity = parseInt(e.target.value) || 2;
+                                                    setEditingItem({ ...editingItem, bundlePricing: newBundles });
+                                                }}
+                                                className="w-16 p-2 border border-purple-300 text-sm text-center"
+                                            />
+                                            <span className="text-xs text-purple-600 font-medium">for</span>
+                                            <input
+                                                type="number"
+                                                step="0.001"
+                                                value={bundle.price}
+                                                onChange={e => {
+                                                    const newBundles = [...editingItem.bundlePricing!];
+                                                    newBundles[index].price = parseFloat(e.target.value) || 0;
+                                                    setEditingItem({ ...editingItem, bundlePricing: newBundles });
+                                                }}
+                                                className="w-24 p-2 border border-purple-300 text-sm"
+                                                placeholder="Price"
+                                            />
+                                            <span className="text-xs text-purple-600 font-medium">KD</span>
+                                            <input
+                                                type="text"
+                                                value={bundle.label || ''}
+                                                onChange={e => {
+                                                    const newBundles = [...editingItem.bundlePricing!];
+                                                    newBundles[index].label = e.target.value;
+                                                    setEditingItem({ ...editingItem, bundlePricing: newBundles });
+                                                }}
+                                                className="flex-1 p-2 border border-purple-300 text-sm"
+                                                placeholder="Label (optional)"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const newBundles = editingItem.bundlePricing!.filter((_, i) => i !== index);
+                                                    setEditingItem({ ...editingItem, bundlePricing: newBundles.length > 0 ? newBundles : undefined });
+                                                }}
+                                                className="text-red-500 hover:text-red-700"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(!editingItem.bundlePricing || editingItem.bundlePricing.length === 0) && (
+                                        <p className="text-xs text-purple-400 italic">No bundle deals defined.</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-1">

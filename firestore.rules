@@ -1,0 +1,85 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // MENU ITEMS - Read-only for public
+    // Staff can write (no auth check for now - internal app)
+    // ============================================
+    match /menu_items/{itemId} {
+      // Anyone can read menu items (guests browsing the menu)
+      allow read: if true;
+      
+      // Allow writes for now (Management App doesn't use Auth yet)
+      // TODO: Add authentication to Management App and use: request.auth != null
+      allow write: if true;
+    }
+    
+    // ============================================
+    // ORDERS - Guests can create, staff can update
+    // ============================================
+    match /orders/{orderId} {
+      // Anyone can read orders (for order tracking)
+      allow read: if true;
+      
+      // Anyone can CREATE an order (guests placing orders)
+      allow create: if true
+        // Validate required fields exist
+        && request.resource.data.roomNumber is string
+        && request.resource.data.items is list
+        && request.resource.data.totalAmount is number
+        // Prevent setting status to anything other than 'pending' on creation
+        && request.resource.data.status == 'pending';
+      
+      // Allow updates for now (Management App doesn't use Auth yet)
+      // This allows status changes: pending -> preparing -> ready -> delivered -> completed
+      // TODO: Add authentication to Management App and use: request.auth != null
+      allow update: if true;
+      
+      // Allow deletes for now (Management App doesn't use Auth yet)
+      // TODO: Add authentication to Management App and use: request.auth != null
+      allow delete: if true;
+    }
+    
+    // ============================================
+    // ORDER HISTORY - Open for now (internal use)
+    // ============================================
+    match /order_history/{orderId} {
+      // TODO: Add authentication to Management App
+      allow read, write: if true;
+    }
+    
+    // ============================================
+    // GUESTS - Open for now (internal use)
+    // ============================================
+    match /guests/{guestId} {
+      allow read, write: if true;
+    }
+    
+    // ============================================
+    // SETTINGS - Read public, write open for now
+    // ============================================
+    match /settings/{settingId} {
+      // Anyone can read settings (to get active season/menu)
+      allow read: if true;
+      
+      // TODO: Add authentication to Management App
+      allow write: if true;
+    }
+    
+    // ============================================
+    // HOUSEKEEPING REQUESTS - Open for now
+    // ============================================
+    match /housekeeping_requests/{requestId} {
+      allow read, write: if true;
+    }
+    
+    // ============================================
+    // DEFAULT DENY - Block all other collections
+    // ============================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

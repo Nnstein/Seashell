@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, ClipboardList, ChevronRight } from 'lucide-react';
-import { Theme } from '../types';
+import { Theme } from '../src/types';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
 

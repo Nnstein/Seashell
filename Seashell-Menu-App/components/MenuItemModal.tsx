@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, X, Check } from 'lucide-react';
+import { Plus, Minus, X, Check, Flame, Leaf, Nut, UtensilsCrossed, Tag, Percent } from 'lucide-react';
 import { MenuItem, Language } from '../src/types';
+import { getDiscountInfo, getBundleInfo, formatPrice } from '../utils/discountUtils';
+
+interface PricingInfo {
+    unitPrice: number;
+    effectiveTotal: number;
+    originalTotal: number;
+    savings: number;
+    appliedBundle?: { quantity: number; price: number; label?: string };
+    hasDiscount: boolean;
+    hasBundlePricing: boolean;
+}
 
 interface MenuItemModalProps {
     item: MenuItem;
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (item: MenuItem, size?: string, addons?: string[], instructions?: string) => void;
+    onAdd: (
+        item: MenuItem,
+        quantity: number,
+        size?: string,
+        addons?: string[],
+        instructions?: string,
+        pricingInfo?: PricingInfo
+    ) => void;
     language: Language;
 }
 
@@ -31,7 +49,7 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
         }
     }, [isOpen, item]);
 
-    // Price Calculation
+    // Price Calculation (unit price based on size/addons)
     useEffect(() => {
         let price = item.price;
         if (item.sizes && selectedSize) {
@@ -46,6 +64,62 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
         setCurrentPrice(price);
     }, [item, selectedSize, selectedAddons]);
 
+    // Calculate discount and bundle info
+    const discountInfo = getDiscountInfo(item.price, item.discountPrice, item.discountLabel);
+    const bundleInfo = getBundleInfo(item.price, item.bundlePricing);
+
+    // Use discounted price if available for unit price
+    const effectiveUnitPrice = discountInfo.hasDiscount ? discountInfo.finalPrice : currentPrice;
+
+    // Calculate total price with bundle pricing applied
+    const calculateTotalPrice = () => {
+        const unitPrice = effectiveUnitPrice;
+
+        // Check if bundle pricing applies
+        if (item.bundlePricing && item.bundlePricing.length > 0) {
+            // Sort bundles by quantity descending to find best match
+            const sortedBundles = [...item.bundlePricing].sort((a, b) => b.quantity - a.quantity);
+
+            let remainingQty = quantity;
+            let totalPrice = 0;
+
+            // Apply bundles from largest to smallest
+            for (const bundle of sortedBundles) {
+                if (remainingQty >= bundle.quantity) {
+                    const bundleCount = Math.floor(remainingQty / bundle.quantity);
+                    totalPrice += bundleCount * bundle.price;
+                    remainingQty -= bundleCount * bundle.quantity;
+                }
+            }
+
+            // Add remaining items at unit price
+            totalPrice += remainingQty * unitPrice;
+
+            return totalPrice;
+        }
+
+        // No bundles, use regular pricing
+        return unitPrice * quantity;
+    };
+
+    const totalPrice = calculateTotalPrice();
+    const regularPrice = effectiveUnitPrice * quantity;
+    const savings = regularPrice - totalPrice;
+    const hasBundleSavings = savings > 0.001; // Account for float precision
+
+    // Find which bundle tier is applied (if any)
+    const getAppliedBundle = () => {
+        if (!item.bundlePricing || item.bundlePricing.length === 0) return null;
+        const sortedBundles = [...item.bundlePricing].sort((a, b) => b.quantity - a.quantity);
+        for (const bundle of sortedBundles) {
+            if (quantity >= bundle.quantity) {
+                return bundle;
+            }
+        }
+        return null;
+    };
+    const appliedBundle = getAppliedBundle();
+
     if (!isOpen) return null;
 
     const handleAddonToggle = (addonName: string) => {
@@ -57,9 +131,19 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
     };
 
     const handleAddToOrder = () => {
-        for (let i = 0; i < quantity; i++) {
-            onAdd(item, selectedSize, selectedAddons, note);
-        }
+        // Build pricing info for cart
+        const pricingInfo: PricingInfo = {
+            unitPrice: effectiveUnitPrice,
+            effectiveTotal: totalPrice,
+            originalTotal: item.price * quantity,
+            savings: (item.price * quantity) - totalPrice,
+            appliedBundle: appliedBundle || undefined,
+            hasDiscount: discountInfo.hasDiscount,
+            hasBundlePricing: hasBundleSavings
+        };
+
+        // Add with quantity and pricing info
+        onAdd(item, quantity, selectedSize, selectedAddons, note, pricingInfo);
         onClose();
     };
 
@@ -84,6 +168,42 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
     };
 
     const isRTL = language === 'ar';
+
+    // Tag icon mapping
+    const getTagIcon = (tag: string) => {
+        switch (tag) {
+            case 'spicy':
+                return <Flame size={14} className="text-white" />;
+            case 'vegetarian':
+                return <Leaf size={14} className="text-white" />;
+            case 'nuts':
+                return <Nut size={14} className="text-white" />;
+            case 'traditional':
+                return <UtensilsCrossed size={14} className="text-white" />;
+            default:
+                return null;
+        }
+    };
+
+    const getTagLabel = (tag: string) => {
+        const labels: Record<string, { en: string; ar: string }> = {
+            spicy: { en: 'Spicy', ar: 'حار' },
+            vegetarian: { en: 'Vegetarian', ar: 'نباتي' },
+            nuts: { en: 'Contains Nuts', ar: 'يحتوي مكسرات' },
+            traditional: { en: 'Traditional', ar: 'تقليدي' }
+        };
+        return labels[tag]?.[language] || tag;
+    };
+
+    const getTagColor = (tag: string) => {
+        switch (tag) {
+            case 'spicy': return 'bg-red-500';
+            case 'vegetarian': return 'bg-green-500';
+            case 'nuts': return 'bg-amber-600';
+            case 'traditional': return 'bg-purple-600';
+            default: return 'bg-stone-500';
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -114,10 +234,54 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60" />
-                    <div className={`absolute bottom-3 sm:bottom-4 ${isRTL ? 'right-4' : 'left-4'} text-white`}>
-                        <div className="bg-gold px-3 py-1 rounded-full inline-block mb-1 sm:mb-2 shadow-sm">
-                            <span className="font-bold text-sm tracking-wide">{(currentPrice * quantity).toFixed(3)} KD</span>
+
+                    {/* Discount Badge - Top Right */}
+                    {discountInfo.hasDiscount && (
+                        <div className="absolute top-3 right-3 z-10">
+                            <div className="bg-red-500 text-white px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1">
+                                <Percent size={14} />
+                                <span className="font-bold text-sm">{discountInfo.discountPercentage}% OFF</span>
+                            </div>
+                            {discountInfo.discountLabel && (
+                                <div className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-b-lg text-center font-medium -mt-0.5">
+                                    {discountInfo.discountLabel}
+                                </div>
+                            )}
                         </div>
+                    )}
+
+                    {/* Price Display - Bottom Left */}
+                    <div className={`absolute bottom-3 sm:bottom-4 ${isRTL ? 'right-4' : 'left-4'} text-white`}>
+                        {hasBundleSavings ? (
+                            // Bundle pricing applied
+                            <div className="flex flex-col items-start gap-1">
+                                <span className="text-white/80 text-sm line-through">
+                                    {formatPrice(regularPrice)} KD
+                                </span>
+                                <div className="bg-purple-600 px-3 py-1 rounded-full inline-block shadow-lg flex items-center gap-2">
+                                    <Tag size={14} />
+                                    <span className="font-bold text-sm tracking-wide">{formatPrice(totalPrice)} KD</span>
+                                </div>
+                                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                    Bundle: Save {formatPrice(savings)} KD
+                                </span>
+                            </div>
+                        ) : discountInfo.hasDiscount ? (
+                            // Item discount applied (no bundle)
+                            <div className="flex flex-col items-start gap-1">
+                                <span className="text-white/80 text-sm line-through">
+                                    {formatPrice(item.price * quantity)} KD
+                                </span>
+                                <div className="bg-red-500 px-3 py-1 rounded-full inline-block shadow-lg">
+                                    <span className="font-bold text-sm tracking-wide">{formatPrice(totalPrice)} KD</span>
+                                </div>
+                            </div>
+                        ) : (
+                            // Regular pricing
+                            <div className="bg-gold px-3 py-1 rounded-full inline-block mb-1 sm:mb-2 shadow-sm">
+                                <span className="font-bold text-sm tracking-wide">{formatPrice(totalPrice)} KD</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -130,6 +294,81 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                         <p className="text-stone-600 text-sm sm:text-base leading-relaxed font-sans">
                             {getDescription()}
                         </p>
+
+                        {/* Tags with high contrast */}
+                        {item.tags && item.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {item.tags.map((tag, idx) => (
+                                    <span
+                                        key={idx}
+                                        className={`${getTagColor(tag)} text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm`}
+                                    >
+                                        {getTagIcon(tag)}
+                                        {getTagLabel(tag)}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {item.note && (
+                            <p className="text-stone-500 text-xs sm:text-sm font-sans mt-3 italic bg-stone-50 p-2 rounded-lg border-l-4 border-gold">
+                                {item.note}
+                            </p>
+                        )}
+
+                        {/* Bundle Deals Section */}
+                        {bundleInfo.hasBundlePricing && bundleInfo.tiers.length > 0 && (
+                            <div className="mt-4 bg-purple-50 rounded-xl p-4 border border-purple-200">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Tag size={16} className="text-purple-600" />
+                                    <h3 className="text-sm font-bold text-purple-800 uppercase tracking-wider">
+                                        {language === 'ar' ? 'عروض الحزم' : 'Bundle Deals'}
+                                    </h3>
+                                </div>
+                                <div className="space-y-2">
+                                    {bundleInfo.tiers.map((tier, idx) => {
+                                        const normalPrice = item.price * tier.quantity;
+                                        const savings = normalPrice - tier.price;
+                                        const savingsPercent = Math.round((savings / normalPrice) * 100);
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center justify-between bg-white rounded-lg p-3 border border-purple-100 shadow-sm"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
+                                                        {tier.quantity}x
+                                                    </span>
+                                                    <div>
+                                                        <span className="font-bold text-purple-800">
+                                                            {formatPrice(tier.price)} KD
+                                                        </span>
+                                                        {tier.label && (
+                                                            <span className="ml-2 text-xs text-purple-600 italic">
+                                                                {tier.label}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs text-stone-400 line-through mr-2">
+                                                        {formatPrice(normalPrice)} KD
+                                                    </span>
+                                                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                                        Save {savingsPercent}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-xs text-purple-600 mt-2 italic">
+                                    {language === 'ar'
+                                        ? 'أضف الكمية المطلوبة للحصول على سعر الحزمة'
+                                        : 'Add the required quantity to get the bundle price'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Customization Section */}
@@ -226,11 +465,20 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
                     {/* Add Button */}
                     <button
                         onClick={handleAddToOrder}
-                        className="flex-1 bg-gold text-white h-10 sm:h-12 rounded-xl font-bold text-sm sm:text-base shadow-lg shadow-gold/30 hover:shadow-gold/50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        className={`flex-1 h-10 sm:h-12 rounded-xl font-bold text-sm sm:text-base shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${hasBundleSavings
+                            ? 'bg-purple-600 text-white shadow-purple-500/30 hover:shadow-purple-500/50'
+                            : 'bg-gold text-white shadow-gold/30 hover:shadow-gold/50'
+                            }`}
                     >
+                        {hasBundleSavings && <Tag size={14} />}
                         <span>{language === 'ar' ? 'أضف' : 'Add'}</span>
                         <span>•</span>
-                        <span>{(currentPrice * quantity).toFixed(3)} KD</span>
+                        <span>{formatPrice(totalPrice)} KD</span>
+                        {hasBundleSavings && (
+                            <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded ml-1">
+                                -{formatPrice(savings)}
+                            </span>
+                        )}
                     </button>
                 </div>
             </div>

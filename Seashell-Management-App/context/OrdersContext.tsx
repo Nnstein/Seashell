@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { collection, onSnapshot, doc, updateDoc, orderBy, query, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useOrderNotifications } from '../hooks/useOrderNotifications';
+import { useToast } from '../components/Toast';
 
 import { Order, OrderStatus } from '../src/types';
 
@@ -59,12 +60,17 @@ export const OrdersProvider = ({ children }: { children: ReactNode }) => {
         return () => unsubscribe();
     }, []);
 
+    const { showSuccess, showError } = useToast();
+
     const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
         try {
             const orderRef = doc(db, 'orders', orderId);
             await updateDoc(orderRef, { status });
+            // Optional: show minimal success feedback or rely on UI optimistic update
+            // showSuccess("Order status updated"); 
         } catch (error) {
             console.error("Error updating order status: ", error);
+            showError("Failed to update order status. Please check your connection or permissions.");
         }
     };
 

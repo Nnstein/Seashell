@@ -1,16 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, PropsWithChildren } from 'react';
-import { getAvailableMenuItems, placeOrder, getMenuSettings } from '../services/firestoreService';
+import { getAvailableMenuItems, getMenuSettings } from '../services/firestoreService';
 import { Language, MenuItem, ViewState } from '../src/types';
 import { useCategoryImages } from '../hooks/useCategoryImages';
+import { useCart, CartItem } from '../hooks/useCart';
+import { useSession } from '../hooks/useSession';
+import { useOrder } from '../hooks/useOrder';
+import { useToast } from '../components/Toast';
 
-// Define CartItem locally as it extends MenuItem with quantity
-export interface CartItem extends MenuItem {
-  quantity: number;
-  cartId: string;
-  selectedSize?: string;
-  selectedAddons?: string[];
-  specialInstructions?: string;
-}
+// Re-export CartItem for components that need it
+export type { CartItem } from '../hooks/useCart';
 
 interface AppState {
   language: Language;
@@ -21,7 +19,22 @@ interface AppState {
   setActiveCategory: (id: string) => void;
   cart: CartItem[];
   confirmedOrder: CartItem[];
-  addToCart: (item: MenuItem, size?: string, addons?: string[], instructions?: string) => void;
+  addToCart: (
+    item: MenuItem,
+    quantity?: number,
+    size?: string,
+    addons?: string[],
+    instructions?: string,
+    pricingInfo?: {
+      unitPrice: number;
+      effectiveTotal: number;
+      originalTotal: number;
+      savings: number;
+      appliedBundle?: { quantity: number; price: number; label?: string };
+      hasDiscount: boolean;
+      hasBundlePricing: boolean;
+    }
+  ) => void;
   updateQuantity: (cartId: string, delta: number) => void;
   updateInstructions: (cartId: string, instructions: string) => void;
   removeFromCart: (cartId: string) => void;
@@ -39,6 +52,7 @@ interface AppState {
   menuItems: MenuItem[];
   loadingMenu: boolean;
   activeSeason: 'Summer' | 'Winter';
+  activeMenu: 'presto' | 'room-service';
   categoryImages: Record<string, string>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -52,75 +66,49 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider = ({ children }: PropsWithChildren) => {
+  // Language & View State
   const [language, setLanguage] = useState<Language>('en');
   const [view, setView] = useState<ViewState>('HOME');
   const [activeCategory, setActiveCategory] = useState<string>('Breakfast');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [confirmedOrder, setConfirmedOrder] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [animateCart, setAnimateCart] = useState(false);
-  const [roomNumber, setRoomNumber] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Menu Data State
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loadingMenu, setLoadingMenu] = useState(true);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [chairNumber, setChairNumber] = useState('');
+  const [activeMenu, setActiveMenu] = useState<'presto' | 'room-service'>('room-service');
 
-  const isBeachGuest = roomNumber.toUpperCase().startsWith('B');
-
-  // Session management constants
-  const SESSION_KEY = 'seashell_guest_session';
-  const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-
-  // Save session to localStorage
-  const saveSession = (room: string, phone: string) => {
-    const session = {
-      roomNumber: room,
-      phoneNumber: phone,
-      expiresAt: Date.now() + SESSION_DURATION
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  };
-
-  // Load session from localStorage
-  const loadSession = () => {
-    try {
-      const sessionStr = localStorage.getItem(SESSION_KEY);
-      if (!sessionStr) return null;
-
-      const session = JSON.parse(sessionStr);
-      if (Date.now() > session.expiresAt) {
-        // Session expired
-        localStorage.removeItem(SESSION_KEY);
-        return null;
-      }
-
-      return session;
-    } catch (error) {
-      console.error('Error loading session:', error);
-      return null;
-    }
-  };
-
-  // Clear session
-  const clearSession = () => {
-    localStorage.removeItem(SESSION_KEY);
-  };
-
-  // Auto-restore session on mount
-  useEffect(() => {
-    const session = loadSession();
-    if (session) {
-      setRoomNumber(session.roomNumber);
-      setPhoneNumber(session.phoneNumber);
-      setView('MENU');
-    }
-  }, []);
+  // Custom Hooks
+  const cartHook = useCart();
+  const sessionHook = useSession();
+  const { showError, showWarning, showInfo } = useToast();
 
   // Use the hook for dynamic images
   const categoryImages = useCategoryImages();
+
+  // Order hook needs dependencies from other hooks + toast functions
+  const orderHook = useOrder({
+    cart: cartHook.cart,
+    clearCart: cartHook.clearCart,
+    roomNumber: sessionHook.roomNumber,
+    phoneNumber: sessionHook.phoneNumber,
+    chairNumber: sessionHook.chairNumber,
+    isBeachGuest: sessionHook.isBeachGuest,
+    activeMenu,
+    setView,
+    setIsCartOpen,
+    showError,
+    showWarning,
+    showInfo
+  });
+
+  // Auto-navigate to MENU if session exists
+  useEffect(() => {
+    if (sessionHook.sessionLoaded && sessionHook.roomNumber) {
+      setView('MENU');
+    }
+  }, [sessionHook.sessionLoaded, sessionHook.roomNumber]);
 
   // Load Menu from Firestore
   useEffect(() => {
@@ -133,21 +121,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
         if (settings) {
           setActiveSeason(settings.activeSeason);
+          setActiveMenu(settings.activeMenu || 'room-service');
         }
 
         const currentSeason = settings?.activeSeason || 'Summer';
+        const currentMenu = settings?.activeMenu || 'room-service';
 
-        // Filter by Season
-        const filteredItems = items.filter(item =>
-          item.season === currentSeason || (!item.season && currentSeason === 'Summer')
-        );
+        // Filter by Season and Menu
+        const filteredItems = items.filter(item => {
+          const seasonMatch = item.season === currentSeason || (!item.season && currentSeason === 'Summer');
+          const menuMatch = item.menu === currentMenu || (!item.menu && currentMenu === 'room-service');
+          return seasonMatch && menuMatch;
+        });
 
         setMenuItems(filteredItems);
 
-        // Set initial category if items exist
         if (filteredItems.length > 0) {
-          // Group by category or just set default
-          setActiveCategory('Breakfast'); // Updated default
+          setActiveCategory('Breakfast');
         }
       } catch (error) {
         console.error("Failed to load menu:", error);
@@ -160,157 +150,52 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   const toggleLanguage = () => setLanguage(prev => prev === 'en' ? 'ar' : 'en');
 
-  const addToCart = (item: MenuItem, size?: string, addons?: string[], instructions?: string) => {
-    setCart(prev => {
-      // Check if item with same ID AND same options exists
-      const existingIndex = prev.findIndex(i =>
-        i.id === item.id &&
-        i.selectedSize === size &&
-        JSON.stringify(i.selectedAddons?.sort()) === JSON.stringify(addons?.sort())
-      );
-
-      if (existingIndex > -1) {
-        // Update quantity of existing item
-        const newCart = [...prev];
-        newCart[existingIndex].quantity += 1;
-        return newCart;
-      }
-
-      // Add new item
-      return [...prev, {
-        ...item,
-        quantity: 1,
-        cartId: Date.now().toString(),
-        selectedSize: size,
-        selectedAddons: addons,
-        specialInstructions: instructions
-      }];
-    });
-
-    setAnimateCart(true);
-    setTimeout(() => setAnimateCart(false), 500);
-  };
-
-  const updateQuantity = (cartId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.cartId === cartId) {
-        const newQty = item.quantity + delta;
-        return newQty > 0 ? { ...item, quantity: newQty } : item;
-      }
-      return item;
-    }));
-  };
-
-  const removeFromCart = (cartId: string) => {
-    setCart(prev => prev.filter(item => item.cartId !== cartId));
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-
-  const updateInstructions = (cartId: string, instructions: string) => {
-    setCart(prev => prev.map(item =>
-      item.cartId === cartId ? { ...item, specialInstructions: instructions } : item
-    ));
-  };
-
-  const handleCheckout = async (paymentMethod: 'room-charge' | 'card' | 'hesabe') => {
-    if (cart.length === 0) return;
-
-    if (paymentMethod === 'hesabe') {
-      // Integration pending backend setup per HESABE_INTEGRATION_PLAN.md
-      alert("Redirecting to Hesabe Payment Gateway... (Integration Pending)");
-      // TODO: Call cloud function 'initiateHesabePayment' here
-      return;
-    }
-
-    if (!roomNumber) {
-      alert("Please enter a room number.");
-      return;
-    }
-
-    if (!phoneNumber) {
-      alert("Please enter a phone number.");
-      return;
-    }
-
-    if (isBeachGuest && !chairNumber) {
-      alert("Please enter your Chair/Table Number.");
-      return;
-    }
-
-    if (isPlacingOrder) return;
-
-    setIsPlacingOrder(true);
-
-    try {
-      // Prepare order items for Firestore (remove UI specific fields if needed)
-      const orderItems = cart.map(item => ({
-        itemId: item.id || 'unknown',
-        name: item.name, // Snapshot name
-        price: item.price, // Snapshot price
-        quantity: item.quantity,
-        notes: '' // Add notes support later if needed
-      }));
-
-      await placeOrder({
-        roomNumber,
-        phoneNumber,
-        guestName: 'Guest', // Placeholder, could be fetched if we had guest auth
-        totalAmount: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-        paymentMethod,
-        items: orderItems,
-        ...(isBeachGuest && chairNumber ? { chairNumber } : {})
-      });
-
-      console.log("DEBUG: Order sent to Firestore successfully.");
-
-      setConfirmedOrder([...cart]);
-      setView('CONFIRMATION');
-      setIsCartOpen(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setCart([]); // Clear cart after successful order
-    } catch (error: any) {
-      console.error("Error placing order: ", error);
-      alert(`Error placing order: ${error.message || error}`);
-    } finally {
-      setIsPlacingOrder(false);
-    }
-  };
-
-  const resetOrder = () => {
-    setCart([]);
-    setConfirmedOrder([]);
-    // Don't clear room/phone - keep session active
-    // Don't clear session from localStorage
-    setView('MENU'); // Go back to menu instead of home
-    setActiveCategory('Breakfast');
-  };
-
   return (
     <AppContext.Provider value={{
-      language, toggleLanguage,
-      view, setView,
-      activeCategory, setActiveCategory,
-      cart, confirmedOrder, addToCart, updateQuantity, updateInstructions, removeFromCart, resetOrder, handleCheckout,
-      isCartOpen, setIsCartOpen,
-      animateCart,
-      roomNumber, setRoomNumber,
-      phoneNumber, setPhoneNumber,
-      clearCart,
-      isPlacingOrder,
+      // Language & View
+      language,
+      toggleLanguage,
+      view,
+      setView,
+      activeCategory,
+      setActiveCategory,
+      isCartOpen,
+      setIsCartOpen,
+      searchQuery,
+      setSearchQuery,
+
+      // Cart (from useCart hook)
+      cart: cartHook.cart,
+      addToCart: cartHook.addToCart,
+      updateQuantity: cartHook.updateQuantity,
+      updateInstructions: cartHook.updateInstructions,
+      removeFromCart: cartHook.removeFromCart,
+      clearCart: cartHook.clearCart,
+      animateCart: cartHook.animateCart,
+
+      // Session (from useSession hook)
+      roomNumber: sessionHook.roomNumber,
+      setRoomNumber: sessionHook.setRoomNumber,
+      phoneNumber: sessionHook.phoneNumber,
+      setPhoneNumber: sessionHook.setPhoneNumber,
+      chairNumber: sessionHook.chairNumber,
+      setChairNumber: sessionHook.setChairNumber,
+      isBeachGuest: sessionHook.isBeachGuest,
+      saveSession: sessionHook.saveSession,
+      clearSession: sessionHook.clearSession,
+
+      // Order (from useOrder hook)
+      confirmedOrder: orderHook.confirmedOrder,
+      isPlacingOrder: orderHook.isPlacingOrder,
+      handleCheckout: orderHook.handleCheckout,
+      resetOrder: orderHook.resetOrder,
+
+      // Menu Data
       menuItems,
       loadingMenu,
       activeSeason,
-      categoryImages,
-      searchQuery,
-      setSearchQuery,
-      chairNumber,
-      setChairNumber,
-      isBeachGuest,
-      saveSession,
-      clearSession
+      activeMenu,
+      categoryImages
     }}>
       {children}
     </AppContext.Provider>
