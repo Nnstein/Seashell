@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { ArrowRight, Globe, KeyRound } from 'lucide-react';
+import { ArrowRight, Globe, KeyRound, Phone } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
 
 const LandingPage: React.FC = () => {
-  const { language, toggleLanguage, setView, setRoomNumber } = useApp();
+  const { language, toggleLanguage, setView, setRoomNumber, setPhoneNumber, saveSession } = useApp();
   const [inputRoom, setInputRoom] = useState('');
+  const [inputPhone, setInputPhone] = useState('');
   const [error, setError] = useState(false);
   const isRTL = language === 'ar';
 
   const handleLogin = () => {
-    if (!inputRoom.trim()) {
+    if (!inputRoom.trim() || !inputPhone.trim()) {
       setError(true);
       return;
     }
     setRoomNumber(inputRoom);
+    setPhoneNumber(inputPhone);
+    saveSession(inputRoom, inputPhone); // Save session to localStorage
     setView('MENU');
   };
 
@@ -41,14 +44,15 @@ const LandingPage: React.FC = () => {
           <span className="text-5xl xs:text-6xl md:text-8xl tracking-widest uppercase font-sans">F&B</span>
         </h1>
 
-        {/* Room Number Login */}
+        {/* Login Form */}
         <div className="flex flex-col items-center gap-4 max-w-md mx-auto animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
-          {/* Room Number Prompt */}
+          {/* Prompt */}
           <p className="text-stone-200 text-lg font-medium tracking-wide drop-shadow-md mb-1 opacity-90">
             {UI_TEXT.enterRoomPrompt[language]}
           </p>
 
+          {/* Room Number Input */}
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/60">
               <KeyRound size={20} />
@@ -63,7 +67,27 @@ const LandingPage: React.FC = () => {
               }}
               className={`
                  w-full bg-white/10 backdrop-blur-md border-2 rounded-full py-4 px-12 text-white placeholder-white/50 focus:outline-none focus:border-gold/80 text-lg transition-colors
-                 ${error ? 'border-red-500/80' : 'border-white/20'}
+                 ${error && !inputRoom ? 'border-red-500/80' : 'border-white/20'}
+               `}
+            />
+          </div>
+
+          {/* Phone Number Input */}
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/60">
+              <Phone size={20} />
+            </div>
+            <input
+              type="tel"
+              placeholder={UI_TEXT.enterPhone[language]}
+              value={inputPhone}
+              onChange={(e) => {
+                setInputPhone(e.target.value);
+                setError(false);
+              }}
+              className={`
+                 w-full bg-white/10 backdrop-blur-md border-2 rounded-full py-4 px-12 text-white placeholder-white/50 focus:outline-none focus:border-gold/80 text-lg transition-colors
+                 ${error && !inputPhone ? 'border-red-500/80' : 'border-white/20'}
                `}
             />
           </div>

@@ -5,11 +5,12 @@ import SearchBar from '../components/SearchBar';
 import CategoryCarousel from '../components/CategoryCarousel';
 import MenuItemCard from '../components/MenuItemCard';
 import MenuItemModal from '../components/MenuItemModal';
-import { MENU_DATA } from '../data';
+
+import { getMenuDataByType } from '../data';
 import { MenuItem } from '../src/types';
 
 const MenuView: React.FC = () => {
-  const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu, categoryImages, searchQuery, setSearchQuery } = useApp();
+  const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu, categoryImages, searchQuery, setSearchQuery, activeMenu } = useApp();
   const [isSticky, setIsSticky] = React.useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const searchBarRef = React.useRef<HTMLDivElement>(null);
@@ -45,8 +46,6 @@ const MenuView: React.FC = () => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       return menuItems.filter(item => {
-        if (!item.isAvailable) return false;
-
         const name = typeof item.name === 'object' ? item.name.en : item.name;
         const description = typeof item.description === 'object' ? item.description.en : item.description;
         const category = item.category;
@@ -60,7 +59,7 @@ const MenuView: React.FC = () => {
     }
 
     // If no search query, filter by active category only
-    return menuItems.filter(item => item.category === activeCategory && item.isAvailable);
+    return menuItems.filter(item => item.category === activeCategory);
   }, [menuItems, activeCategory, searchQuery]);
 
   // Get category details for theme/display
@@ -79,6 +78,8 @@ const MenuView: React.FC = () => {
         theme="light" // Default theme or derive from category
         language={language}
       />
+
+
 
       {/* Search Bar - JS Sticky Implementation */}
       <div ref={searchBarRef} className="relative z-30">
@@ -103,7 +104,7 @@ const MenuView: React.FC = () => {
 
       <section className="pb-2 px-2 sm:pb-4 sm:px-4 relative z-20">
         <CategoryCarousel
-          categories={MENU_DATA.map(cat => ({
+          categories={getMenuDataByType(activeMenu).map(cat => ({
             id: cat.id,
             name: cat.name,
             image: categoryImages[cat.id] || cat.image

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order, OrderStatus } from '../src/types';
 import OrderCard from './OrderCard';
 import SearchBar from './SearchBar';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell, XAxis } from 'recharts';
-import { LayoutGrid, List, ShoppingBag, Clock, Bell, BellOff } from 'lucide-react';
+import { LayoutGrid, List, ShoppingBag, Clock, Bell, BellOff, Volume2 } from 'lucide-react';
 import { useOrders } from '../context/OrdersContext';
+import { unlockAudio, isAudioUnlocked, requestNotificationPermission } from '../utils/notifications';
 
 
 
@@ -16,7 +17,24 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
     const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
     const [searchQuery, setSearchQuery] = useState('');
+    const [audioReady, setAudioReady] = useState(false);
     const { notificationsEnabled, toggleNotifications } = useOrders();
+
+    // Check audio unlock status on mount
+    useEffect(() => {
+        setAudioReady(isAudioUnlocked());
+    }, []);
+
+    // Handle notification toggle with audio unlock
+    const handleNotificationToggle = async () => {
+        if (!notificationsEnabled) {
+            // Enabling notifications - unlock audio first
+            const unlocked = await unlockAudio();
+            setAudioReady(unlocked);
+            await requestNotificationPermission();
+        }
+        toggleNotifications();
+    };
 
     // Calculate Stats
     const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
@@ -94,17 +112,20 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {/* Notification Toggle */}
+                    {/* Notification Toggle with Audio Unlock */}
                     <button
-                        onClick={toggleNotifications}
+                        onClick={handleNotificationToggle}
                         className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border ${notificationsEnabled
                             ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                             : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                             }`}
-                        title={notificationsEnabled ? 'Notifications ON' : 'Notifications OFF'}
+                        title={notificationsEnabled
+                            ? `Notifications ON ${audioReady ? '(Sound Ready)' : '(Click to enable sound)'}`
+                            : 'Click to enable notifications'}
                     >
                         {notificationsEnabled ? <Bell size={16} className="mr-2" /> : <BellOff size={16} className="mr-2" />}
-                        {notificationsEnabled ? 'Notifications ON' : 'Notifications OFF'}
+                        {notificationsEnabled ? 'Sound ON' : 'Enable Sound'}
+                        {notificationsEnabled && audioReady && <Volume2 size={14} className="ml-2 text-green-600" />}
                     </button>
 
                     {/* Enhanced Toggle Switch */}
@@ -237,12 +258,23 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                 <td className="px-6 py-4 font-medium text-ink">
                                                     <div>{order.guestName || 'Guest'}</div>
                                                     <div className="text-xs text-slate-400 mb-1">Rm {order.roomNumber}</div>
+                                                    {order.phoneNumber && (
+                                                        <div className="text-xs text-slate-400 mb-1">📞 {order.phoneNumber}</div>
+                                                    )}
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${order.paymentMethod === 'card'
                                                         ? 'bg-purple-50 text-purple-700 border-purple-200'
                                                         : 'bg-amber-50 text-amber-700 border-amber-200'
                                                         }`}>
                                                         {order.paymentMethod === 'card' ? 'Card' : 'Room'}
                                                     </span>
+                                                    {order.menu && (
+                                                        <span className={`ml-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${order.menu === 'room-service'
+                                                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                                            : 'bg-green-50 text-green-700 border-green-200'
+                                                            }`}>
+                                                            {order.menu === 'room-service' ? 'RS' : 'Presto'}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-slate-600">
                                                     {order.items.map((item, i) => (
@@ -251,7 +283,7 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                         </div>
                                                     ))}
                                                 </td>
-                                                <td className="px-6 py-4 font-serif font-bold text-ink">${order.totalAmount.toFixed(2)}</td>
+                                                <td className="px-6 py-4 font-serif font-bold text-ink">{order.totalAmount.toFixed(3)} KD</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex px-3 py-1 text-xs font-bold tracking-wider uppercase border
                                             ${order.status === 'pending' ? 'bg-blue-50 text-blue-800 border-blue-100' : ''}

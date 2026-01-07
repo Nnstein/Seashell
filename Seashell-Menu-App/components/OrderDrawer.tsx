@@ -25,7 +25,9 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
     isBeachGuest
   } = useApp();
 
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Use effectiveTotal which already includes discount/bundle pricing
+  const total = cart.reduce((sum, item) => sum + (item.effectiveTotal ?? item.price * item.quantity), 0);
+  const totalSavings = cart.reduce((sum, item) => sum + (item.savings ?? 0), 0);
   const isRTL = language === 'ar';
   const [paymentMethod, setPaymentMethod] = React.useState<'room_charge' | 'card'>('room_charge');
 
@@ -63,9 +65,9 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
       >
         <div className="h-full flex flex-col relative overflow-hidden">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-stone-200 bg-white/50 relative z-20 flex justify-between items-center">
-            <div>
-              <h2 className="font-serif text-3xl font-bold text-stone-800 flex items-center gap-2">
+          <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-stone-200 bg-white/50 relative z-20 flex justify-between items-center">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-stone-800 flex items-center gap-2 truncate">
                 {UI_TEXT.myOrder[language]}
               </h2>
               {/* Room/Beach Number Display */}
@@ -89,28 +91,60 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
           </div>
 
           {/* Items List */}
-          <div className="flex-grow overflow-y-auto px-8 py-6 custom-scrollbar">
+          <div className="flex-grow overflow-y-auto px-4 sm:px-8 py-4 sm:py-6 custom-scrollbar">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-stone-400">
-                <div className="w-24 h-24 bg-stone-100 rounded-full flex items-center justify-center mb-6">
-                  <ClipboardList size={40} className="opacity-40" />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-stone-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
+                  <ClipboardList size={32} className="opacity-40 sm:hidden" />
+                  <ClipboardList size={40} className="opacity-40 hidden sm:block" />
                 </div>
-                <p className="font-serif text-2xl text-stone-600">{UI_TEXT.yourOrderEmpty[language]}</p>
-                <p className="font-sans text-sm mt-2 max-w-[200px] text-center">{UI_TEXT.exploreMenu[language]}</p>
+                <p className="font-serif text-xl sm:text-2xl text-stone-600 text-center">{UI_TEXT.yourOrderEmpty[language]}</p>
+                <p className="font-sans text-xs sm:text-sm mt-2 max-w-[200px] text-center">{UI_TEXT.exploreMenu[language]}</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {cart.map((item) => (
-                  <div key={item.cartId} className="flex gap-4 items-start group animate-fade-in bg-white p-3 rounded-xl border border-stone-100 shadow-sm">
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-stone-200 flex-shrink-0 shadow-sm">
+                  <div key={item.cartId} className="flex gap-3 sm:gap-4 items-start group animate-fade-in bg-white p-2 sm:p-3 rounded-xl border border-stone-100 shadow-sm">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-stone-200 flex-shrink-0 shadow-sm">
                       <img src={getImage(item)} alt={getName(item)} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-grow">
                       <div className="flex justify-between items-start">
                         <h3 className="font-serif text-lg font-bold text-stone-800 leading-tight">{getName(item)}</h3>
-                        <p className={`font-sans font-bold text-stone-900 ${isRTL ? 'mr-2' : 'ml-2'}`}>{(item.price * item.quantity).toFixed(3)}</p>
+                        <div className={`${isRTL ? 'mr-2' : 'ml-2'} text-right`}>
+                          {/* Show savings if bundle/discount applied */}
+                          {item.savings && item.savings > 0.01 && (
+                            <span className="text-xs text-stone-400 line-through block">
+                              {(item.originalTotal ?? item.price * item.quantity).toFixed(3)}
+                            </span>
+                          )}
+                          <span className={`font-sans font-bold ${item.hasBundlePricing ? 'text-purple-600' : item.hasDiscount ? 'text-red-600' : 'text-stone-900'}`}>
+                            {(item.effectiveTotal ?? item.price * item.quantity).toFixed(3)}
+                          </span>
+                        </div>
                       </div>
                       <p className="font-sans text-xs text-stone-500 mb-1 truncate max-w-[180px]">{getDescription(item)}</p>
+
+                      {/* Bundle/Discount Badge */}
+                      {(item.hasBundlePricing || item.hasDiscount) && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {item.hasBundlePricing && item.appliedBundle && (
+                            <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              📦 {item.appliedBundle.quantity}x Bundle
+                            </span>
+                          )}
+                          {item.hasDiscount && (
+                            <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              🏷️ Discounted
+                            </span>
+                          )}
+                          {item.savings && item.savings > 0.01 && (
+                            <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              -{item.savings.toFixed(3)} KD
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Customizations Display */}
                       {(item.selectedSize || (item.selectedAddons && item.selectedAddons.length > 0)) && (
@@ -136,7 +170,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                           placeholder={language === 'ar' ? 'تعليمات خاصة...' : 'Special instructions...'}
                           value={item.specialInstructions || ''}
                           onChange={(e) => updateInstructions(item.cartId, e.target.value)}
-                          className="w-full text-xs p-2 border border-stone-200 rounded bg-white focus:border-gold focus:ring-0 outline-none resize-none"
+                          className="w-full text-xs p-2 border border-stone-200 rounded bg-white text-stone-900 placeholder:text-stone-400 focus:border-gold focus:ring-0 outline-none resize-none"
                           rows={2}
                         />
                       </div>
@@ -176,19 +210,19 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
 
           {/* Footer / Checkout */}
           {cart.length > 0 && (
-            <div className="px-8 py-6 bg-white border-t border-stone-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] relative z-20">
-              <div className="flex justify-between items-end mb-6">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 bg-white border-t border-stone-200 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] relative z-20">
+              <div className="flex justify-between items-end mb-4 sm:mb-6">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-stone-500 mb-1">{UI_TEXT.total[language]}</p>
-                  <span className="font-serif text-stone-900 text-3xl font-bold">{total.toFixed(3)} <span className="text-sm font-sans font-normal text-stone-400">KWD</span></span>
+                  <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1">{UI_TEXT.total[language]}</p>
+                  <span className="font-serif text-stone-900 text-2xl sm:text-3xl font-bold">{total.toFixed(3)} <span className="text-xs sm:text-sm font-sans font-normal text-stone-400">KWD</span></span>
                 </div>
               </div>
 
               {/* Payment Method Selection */}
-              <div className="mb-6 space-y-3">
-                <p className="text-xs uppercase tracking-widest text-stone-500 mb-2">Payment Method</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <label className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'room_charge' ? 'border-gold bg-gold/10 text-stone-900 shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-gold/50 hover:bg-white'}`}>
+              <div className="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
+                <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-2">Payment Method</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  <label className={`relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'room_charge' ? 'border-gold bg-gold/10 text-stone-900 shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-gold/50 hover:bg-white'}`}>
                     <input
                       type="radio"
                       name="paymentMethod"
@@ -198,12 +232,12 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                       className="hidden"
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br from-gold/20 to-transparent opacity-0 transition-opacity duration-500 ${paymentMethod === 'room_charge' ? 'opacity-100' : ''}`} />
-                    <Home size={28} className={`mb-2 z-10 transition-transform duration-300 ${paymentMethod === 'room_charge' ? 'scale-110 text-gold' : 'group-hover:scale-110'}`} />
-                    <span className="font-serif font-bold text-sm z-10">Room Charge</span>
-                    <span className="text-[10px] uppercase tracking-wider opacity-60 z-10">Bill to Room</span>
+                    <Home size={24} className={`sm:w-7 sm:h-7 mb-1 sm:mb-2 z-10 transition-transform duration-300 ${paymentMethod === 'room_charge' ? 'scale-110 text-gold' : 'group-hover:scale-110'}`} />
+                    <span className="font-serif font-bold text-xs sm:text-sm z-10">Room Charge</span>
+                    <span className="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-60 z-10">Bill to Room</span>
                   </label>
 
-                  <label className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'card' ? 'border-stone-800 bg-stone-800 text-white shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-stone-800/50 hover:bg-white'}`}>
+                  <label className={`relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'card' ? 'border-stone-800 bg-stone-800 text-white shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-stone-800/50 hover:bg-white'}`}>
                     <input
                       type="radio"
                       name="paymentMethod"
@@ -213,12 +247,12 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                       className="hidden"
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 transition-opacity duration-500 ${paymentMethod === 'card' ? 'opacity-100' : ''}`} />
-                    <div className="mb-2 z-10">
+                    <div className="mb-1 sm:mb-2 z-10">
                       {/* Custom Card Icon or Lucide */}
-                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-300 ${paymentMethod === 'card' ? 'scale-110' : 'group-hover:scale-110'}`}><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`sm:w-7 sm:h-7 transition-transform duration-300 ${paymentMethod === 'card' ? 'scale-110' : 'group-hover:scale-110'}`}><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
                     </div>
-                    <span className="font-serif font-bold text-sm z-10">Pay with Card</span>
-                    <span className="text-[10px] uppercase tracking-wider opacity-60 z-10">Credit / Debit</span>
+                    <span className="font-serif font-bold text-xs sm:text-sm z-10">Pay with Card</span>
+                    <span className="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-60 z-10">Credit / Debit</span>
                   </label>
                 </div>
               </div>
