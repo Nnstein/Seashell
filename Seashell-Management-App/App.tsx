@@ -18,8 +18,10 @@ const App: React.FC = () => {
   // Load data from Firestore and archive old orders
   useEffect(() => {
     loadMenu();
-    archiveOldOrders();
-  }, []);
+    if (user) {
+      archiveOldOrders();
+    }
+  }, [user]);
 
   const loadMenu = async () => {
     const menuItems = await getMenuItems();
@@ -42,7 +44,9 @@ const App: React.FC = () => {
     try {
       const count = await archiveCompletedOrders();
       if (count > 0) {
-        console.log(`Archived ${count} completed orders`);
+        console.log(`✅ Successfully archived ${count} completed orders from yesterday to history.`);
+      } else {
+        console.log('ℹ️ No old completed orders to archive today.');
       }
     } catch (error) {
       console.error('Error archiving orders:', error);

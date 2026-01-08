@@ -154,17 +154,31 @@ export const archiveCompletedOrders = async (): Promise<number> => {
         today.setHours(0, 0, 0, 0);
         const startOfToday = today.getTime();
 
-        // Get completed orders from before today (yesterday and earlier)
+        // Query only for 'completed' status to avoid composite index requirement
         const q = query(
             collection(db, ORDERS_COLLECTION),
-            where('status', '==', 'completed'),
-            where('createdAt', '<', startOfToday)
+            where('status', '==', 'completed')
         );
 
         const querySnapshot = await getDocs(q);
-        let archivedCount = 0;
 
-        for (const docSnapshot of querySnapshot.docs) {
+        // Filter by date locally
+        const ordersToArchive = querySnapshot.docs.filter(docSnapshot => {
+            const data = docSnapshot.data();
+            const createdAt = data.createdAt;
+
+            // Handle both number and Firestore Timestamp
+            const createdTime = (createdAt instanceof Timestamp)
+                ? createdAt.toMillis()
+                : (typeof createdAt === 'number' ? createdAt : 0);
+
+            return createdTime < startOfToday;
+        });
+
+        let archivedCount = 0;
+        console.log(`DEBUG: Found ${ordersToArchive.length} completed orders from before today out of ${querySnapshot.docs.length} total completed orders.`);
+
+        for (const docSnapshot of ordersToArchive) {
             const order = parseOrder(docSnapshot);
             if (!order) continue;
 
@@ -177,6 +191,12 @@ export const archiveCompletedOrders = async (): Promise<number> => {
             // Delete from orders collection
             await deleteDoc(doc(db, ORDERS_COLLECTION, order.id));
             archivedCount++;
+        }
+
+        if (archivedCount > 0) {
+            console.log(`✅ Successfully archived ${archivedCount} completed orders from yesterday to history.`);
+        } else {
+            console.log('ℹ️ No old completed orders to archive today.');
         }
 
         return archivedCount;

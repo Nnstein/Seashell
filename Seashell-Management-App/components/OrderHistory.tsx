@@ -183,43 +183,43 @@ const OrderHistory: React.FC = () => {
                     <p className="text-slate-500 font-serif italic mt-1">Archived completed orders</p>
                 </div>
 
-                <div className="flex flex-col gap-3 w-full md:w-auto">
+                <div className="flex flex-col gap-3 w-full md:w-auto relative">
                     <div className="flex items-center gap-2">
                         <Filter size={16} className="text-slate-400" />
                         <select
                             value={dateFilter}
                             onChange={(e) => handleFilterChange(e.target.value as FilterType)}
-                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white focus:outline-none focus:border-gold"
+                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white focus:outline-none focus:border-gold w-full md:w-48"
                         >
                             <option value="today">Today</option>
                             <option value="week">Last 7 Days</option>
                             <option value="month">Last 30 Days</option>
                             <option value="this-year">This Year</option>
-                            <option value="previous-year">Previous Years</option>
+                            <option value="previous-year">Previous Year</option>
                         </select>
                     </div>
 
-                    {/* Advanced Filter Panel */}
+                    {/* Advanced Filter Panel - Positioned as an overlay */}
                     {showAdvancedFilter && (
-                        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="font-serif font-bold text-ink text-sm">Advanced Filter</h3>
+                        <div className="absolute top-full right-0 mt-2 z-50 w-full md:w-72 bg-white border border-slate-200 rounded-xl p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200 ring-1 ring-black/5">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-serif font-bold text-ink text-sm">Filter Options</h3>
                                 <button
                                     onClick={() => setShowAdvancedFilter(false)}
-                                    className="text-slate-400 hover:text-slate-600"
+                                    className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-ink transition-colors"
                                 >
                                     <X size={16} />
                                 </button>
                             </div>
 
                             {dateFilter === 'this-year' && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Year</label>
+                                        <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Select Year</label>
                                         <select
                                             value={selectedYear}
                                             onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                            className="w-full px-3 py-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-gold"
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all"
                                         >
                                             {generateYearOptions().map(year => (
                                                 <option key={year} value={year}>{year}</option>
@@ -227,11 +227,11 @@ const OrderHistory: React.FC = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Month (Optional)</label>
+                                        <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Select Month (Optional)</label>
                                         <select
                                             value={selectedMonth}
                                             onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                            className="w-full px-3 py-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-gold"
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all"
                                         >
                                             <option value="">All Months</option>
                                             {monthNames.map((month, idx) => (
@@ -243,13 +243,13 @@ const OrderHistory: React.FC = () => {
                             )}
 
                             {dateFilter === 'previous-year' && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Year</label>
+                                        <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Select Year</label>
                                         <select
                                             value={selectedYear}
                                             onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                            className="w-full px-3 py-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-gold"
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all"
                                         >
                                             {generateYearOptions().filter(y => y < new Date().getFullYear()).map(year => (
                                                 <option key={year} value={year}>{year}</option>
@@ -257,26 +257,35 @@ const OrderHistory: React.FC = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-600 mb-1">Date Range (Optional)</label>
-                                        <div className="flex gap-2">
+                                        <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1.5">Date Range (Optional)</label>
+                                        <div className="flex flex-col gap-2">
                                             <input
                                                 type="date"
                                                 value={customStartDate}
                                                 onChange={(e) => setCustomStartDate(e.target.value)}
-                                                className="flex-1 px-3 py-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-gold"
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all"
                                                 placeholder="Start"
                                             />
                                             <input
                                                 type="date"
                                                 value={customEndDate}
                                                 onChange={(e) => setCustomEndDate(e.target.value)}
-                                                className="flex-1 px-3 py-2 border border-slate-200 rounded text-sm focus:outline-none focus:border-gold"
+                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold transition-all"
                                                 placeholder="End"
                                             />
                                         </div>
                                     </div>
                                 </div>
                             )}
+
+                            <div className="mt-5 pt-4 border-t border-slate-100 flex justify-end">
+                                <button
+                                    onClick={() => setShowAdvancedFilter(false)}
+                                    className="px-4 py-2 bg-ink text-white text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-gold hover:text-ink transition-all"
+                                >
+                                    Apply Filter
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
