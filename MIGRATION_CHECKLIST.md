@@ -19,23 +19,24 @@ This document tracks the progress of migrating Seashell from a flat repository s
 - [x] **1.3** Delete `menu-app-update.zip`
 - [x] **1.4** Delete `menu-app-update/` folder (entire directory)
 - [x] **1.5** Organize documentation files into `docs/` folder
-- [ ] **1.6** Commit: `chore: cleanup redundant files and organize docs`
+- [x] **1.6** Commit: `chore: cleanup redundant files and organize docs`
 
 ### 🪜 Stage 2: Organize Repo Structure
 
 > Goal: Move apps into a consistent structure
 
-- [ ] **2.1** Create `apps/` directory
-- [ ] **2.2** Move `Seashell-Menu-App/` → `apps/menu-app/`
-- [ ] **2.3** Move `Seashell-Management-App/` → `apps/management-app/`
-- [ ] **2.4** Move `Seashell-Housekeeping-App/` → `apps/housekeeping-app/`
-- [ ] **2.5** Move `Seashell-Housekeeping-Management-App/` → `apps/housekeeping-management-app/`
-- [ ] **2.6** Test each app individually:
-  - [ ] `apps/menu-app`: `npm install && npm run dev` ✓
-  - [ ] `apps/management-app`: `npm install && npm run dev` ✓
-  - [ ] `apps/housekeeping-app`: `npm install && npm run dev` ✓
-  - [ ] `apps/housekeeping-management-app`: `npm install && npm run dev` ✓
-- [ ] **2.7** Commit: `refactor: move apps to apps/ directory`
+- [x] **2.1** Create `apps/` directory
+- [x] **2.2** Move `Seashell-Menu-App/` → `apps/menu-app/`
+- [x] **2.3** Move `Seashell-Management-App/` → `apps/management-app/`
+- [x] **2.4** Move `Seashell-Housekeeping-App/` → `apps/housekeeping-app/`
+- [x] **2.5** Move `Seashell-Housekeeping-Management-App/` → `apps/housekeeping-management-app/`
+- [x] **2.6** Test each app individually:
+  - [x] `apps/menu-app`: `npm run dev` ✓
+  - [x] `apps/management-app`: `npm run dev` ✓
+  - [x] `apps/housekeeping-app`: `npm run dev` ✓
+  - [x] `apps/housekeeping-management-app`: `npm run dev` ✓
+- [x] **2.7** Delete old app folders (Seashell-\*) ✓
+- [ ] **2.8** Commit: `refactor: move apps to apps/ directory`
 
 ### 🪜 Stage 3: Introduce Monorepo Tooling
 
