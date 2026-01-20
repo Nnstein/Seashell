@@ -5,7 +5,12 @@ package-lock.json
 # Build outputs
 dist/
 build/
+.next/
+out/
 public/
+
+# Zip files (use GitHub Releases instead)
+*.zip
 
 # Environment variables (CRITICAL - Never commit these!)
 .env
