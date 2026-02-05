@@ -102,6 +102,15 @@ export const updateOrderStatus = async (id: string, status: Order['status']) => 
     return await updateDoc(docRef, { status });
 };
 
+/**
+ * Toggle VIP status on an order
+ * Allows managers to mark important orders for priority handling
+ */
+export const toggleOrderVIP = async (id: string, isVIP: boolean) => {
+    const docRef = doc(db, ORDERS_COLLECTION, id);
+    return await updateDoc(docRef, { isVIP });
+};
+
 // --- Order History ---
 
 export const getOrderHistory = async (): Promise<Order[]> => {
@@ -242,7 +251,8 @@ export const getMenuSettings = async (): Promise<MenuSettings | null> => {
             const defaultSettings: MenuSettings = {
                 id: GLOBAL_SETTINGS_ID,
                 activeSeason: 'Summer',
-                activeMenu: 'room-service'
+                activeMenu: 'room-service',
+                menuOpen: true
             };
             await setDoc(docRef, defaultSettings);
             return defaultSettings;
@@ -255,5 +265,41 @@ export const getMenuSettings = async (): Promise<MenuSettings | null> => {
 
 export const updateMenuSettings = async (updates: Partial<MenuSettings>) => {
     const docRef = doc(db, SETTINGS_COLLECTION, GLOBAL_SETTINGS_ID);
+    return await updateDoc(docRef, updates);
+};
+
+/**
+ * Count pending orders (not completed or cancelled)
+ * Used for determining when to open/close menu based on kitchen capacity
+ */
+export const getPendingOrdersCount = async (): Promise<number> => {
+    try {
+        const q = query(
+            collection(db, ORDERS_COLLECTION),
+            where('status', 'in', ['pending', 'preparing', 'ready'])
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.size;
+    } catch (error) {
+        console.error("Error counting pending orders:", error);
+        return 0;
+    }
+};
+
+/**
+ * Toggle menu open/closed status
+ * Used for kitchen capacity management
+ * @param isOpen - Whether menu should be open
+ * @param closeMessage - Optional custom message (English) when menu is closed
+ */
+export const setMenuStatus = async (isOpen: boolean, closeMessage?: string) => {
+    const docRef = doc(db, SETTINGS_COLLECTION, GLOBAL_SETTINGS_ID);
+    const updates: any = { menuOpen: isOpen };
+    
+    // If closing and message provided, save it
+    if (!isOpen && closeMessage) {
+        updates.closeMessage = closeMessage;
+    }
+    
     return await updateDoc(docRef, updates);
 };

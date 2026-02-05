@@ -1,0 +1,13 @@
+{
+  "name": "@seashell/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "firebase.ts",
+  "types": "firebase.ts",
+  "dependencies": {
+    "firebase": "^12.6.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

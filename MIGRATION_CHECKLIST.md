@@ -21,7 +21,7 @@ This document tracks the progress of migrating Seashell from a flat repository s
 - [x] **1.5** Organize documentation files into `docs/` folder
 - [x] **1.6** Commit: `chore: cleanup redundant files and organize docs`
 
-### 🪜 Stage 2: Organize Repo Structure
+### 🪜 Stage 2: Organize Repo Structure ✅
 
 > Goal: Move apps into a consistent structure
 
@@ -36,22 +36,22 @@ This document tracks the progress of migrating Seashell from a flat repository s
   - [x] `apps/housekeeping-app`: `npm run dev` ✓
   - [x] `apps/housekeeping-management-app`: `npm run dev` ✓
 - [x] **2.7** Delete old app folders (Seashell-\*) ✓
-- [ ] **2.8** Commit: `refactor: move apps to apps/ directory`
+- [x] **2.8** Commit: `refactor: move apps to apps/ directory`
 
-### 🪜 Stage 3: Introduce Monorepo Tooling
+### 🪜 Stage 3: Introduce Monorepo Tooling ✅
 
 > Goal: Set up Turborepo for unified builds and shared packages
 
-- [ ] **3.1** Create root `package.json` with npm workspaces
-- [ ] **3.2** Create `packages/` directory structure:
-  - [ ] `packages/ui/` → Shared UI components
-  - [ ] `packages/utils/` → Helper functions
-  - [ ] `packages/config/` → Firebase & env configs
-- [ ] **3.3** Install and configure Turborepo (`turbo.json`)
-- [ ] **3.4** Create shared `tsconfig.base.json`
-- [ ] **3.5** Extract shared Firebase config to `packages/config`
-- [ ] **3.6** Test all apps with `npx turbo run dev`
-- [ ] **3.7** Commit: `feat: add turborepo monorepo configuration`
+- [x] **3.1** Create root `package.json` with npm workspaces
+- [x] **3.2** Create `packages/` directory structure:
+  - [x] `packages/ui/` → Shared UI components
+  - [x] `packages/utils/` → Helper functions
+  - [x] `packages/config/` → Firebase & env configs
+- [x] **3.3** Install and configure Turborepo (`turbo.json`)
+- [x] **3.4** Create shared `tsconfig.base.json`
+- [x] **3.5** Extract shared Firebase config to `packages/config`
+- [x] **3.6** Test all apps with `npx turbo run dev`
+- [x] **3.7** Commit: `feat: add turborepo monorepo configuration`
 
 ### 🪜 Stage 4: CI/CD & Documentation
 

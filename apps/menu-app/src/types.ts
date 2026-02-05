@@ -113,6 +113,7 @@ export interface Order {
     chairNumber?: string; // For Beach Guests
     phoneNumber?: string;
     menu?: 'presto' | 'room-service'; // Which menu this order was placed from
+    expectedPreparationTime?: number; // Estimated preparation time in minutes shown to guest
 }
 
 export interface Guest {
@@ -134,6 +135,8 @@ export interface MenuSettings {
     id: string; // 'global_settings'
     activeSeason: 'Summer' | 'Winter';
     activeMenu: 'presto' | 'room-service'; // Which menu is currently active for guests
+    menuOpen?: boolean; // Whether the menu is accepting orders (kitchen capacity management)
+    closeMessage?: string; // Custom close message (English) - UI wrapper is bilingual
 }
 
 export type Language = 'en' | 'ar';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shell, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, role: 'admin' | 'kitchen') => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -20,9 +20,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (username === 'admin' && password === 'admin') {
-      onLogin(username);
+      onLogin(username, 'admin');
+    } else if (username === 'kitchen' && password === 'kitchen') {
+      onLogin(username, 'kitchen');
     } else {
-      setError('Invalid credentials. Try admin/admin');
+      setError('Invalid credentials. Try admin/admin or kitchen/kitchen');
     }
   };
 
@@ -37,7 +39,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <Shell size={48} strokeWidth={1.5} />
             </div>
             <h1 className="text-4xl font-serif font-bold text-ink tracking-tight">Seashell</h1>
-            <p className="text-slate-500 font-serif italic mt-2">Hotel & Resort</p>
+            <p className="text-slate-500 font-serif italic mt-2">F & B</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

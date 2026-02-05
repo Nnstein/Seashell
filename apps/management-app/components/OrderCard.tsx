@@ -1,13 +1,15 @@
 import React from 'react';
 import { Order } from '../src/types';
-import { Clock, MapPin, CheckCircle, ChefHat, Truck, Phone } from 'lucide-react';
+import { Clock, MapPin, CheckCircle, ChefHat, Truck, Phone, Star } from 'lucide-react';
 
 interface OrderCardProps {
   order: Order;
   onUpdateStatus: (id: string, status: Order['status']) => void;
+  onToggleVIP?: (orderId: string, currentVIPStatus: boolean) => void;
+  userRole: 'admin' | 'kitchen';
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
+const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus, onToggleVIP, userRole }) => {
   const timeAgo = (timestamp: number) => {
     const diff = Date.now() - timestamp;
     const seconds = Math.floor(diff / 1000);
@@ -37,10 +39,20 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
   };
 
   const nextStatus = getNextStatus(order.status);
-  const orderTime = order.createdAt?.seconds ? order.createdAt.seconds * 1000 : Date.now();
+  const orderTime = typeof order.createdAt === 'number' ? order.createdAt : Date.now();
 
   return (
     <div className="bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-slate-100 hover:shadow-lg transition-all duration-300 group relative overflow-hidden fade-in-up">
+      {/* VIP Ribbon - Top Right Corner */}
+      {order.isVIP && (
+        <div className="absolute top-0 right-0 bg-gradient-to-br from-amber-400 to-yellow-500 text-white px-3 py-1 shadow-lg transform translate-x-2 -translate-y-0.5 rotate-12">
+          <div className="flex items-center gap-1">
+            <Star size={12} fill="white" />
+            <span className="text-[10px] font-black uppercase tracking-wider">VIP</span>
+          </div>
+        </div>
+      )}
+
       {/* Status Stripe */}
       <div className={`absolute top-0 left-0 w-1 h-full 
         ${order.status === 'pending' ? 'bg-blue-500' : ''}
@@ -52,10 +64,26 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
       `}></div>
 
       <div className="flex justify-between items-start mb-4 pl-2">
-        <div className="flex items-center text-xs font-bold tracking-widest text-slate-400 uppercase">
-          <span className="mr-2">#{order.id.slice(0, 6)}</span>
-          <Clock size={12} className="mr-1" />
-          {timeAgo(orderTime)}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center text-xs font-bold tracking-widest text-slate-400 uppercase">
+            <span className="mr-2">#{order.id.slice(0, 6)}</span>
+            <Clock size={12} className="mr-1" />
+            {timeAgo(orderTime)}
+          </div>
+          {/* VIP Toggle Star - Only for Admin */}
+          {userRole === 'admin' && onToggleVIP && (
+            <button
+              onClick={() => onToggleVIP(order.id, order.isVIP || false)}
+              className={`p-1 rounded-full transition-all duration-200 ${
+                order.isVIP 
+                  ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' 
+                  : 'text-slate-300 hover:text-amber-400 hover:bg-slate-50'
+              }`}
+              title={order.isVIP ? 'Remove VIP status' : 'Mark as VIP'}
+            >
+              <Star size={16} fill={order.isVIP ? 'currentColor' : 'none'} />
+            </button>
+          )}
         </div>
         <div className="font-serif font-bold text-lg text-ink">{order.totalAmount.toFixed(3)} KD</div>
       </div>
@@ -174,7 +202,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
       )}
 
       <div className="pl-2 mt-auto">
-        {nextStatus && (
+        {nextStatus && userRole === 'admin' && (
           <button
             onClick={() => onUpdateStatus(order.id, nextStatus)}
             className={`w-full flex items-center justify-center py-3 text-xs font-bold uppercase tracking-widest transition-colors border
@@ -189,6 +217,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateStatus }) => {
             {order.status === 'ready' && <><Truck size={14} className="mr-2" /> Deliver</>}
             {order.status === 'delivered' && <><CheckCircle size={14} className="mr-2" /> Complete</>}
           </button>
+        )}
+        {nextStatus && userRole === 'kitchen' && (
+          <div className="w-full text-center py-3 text-xs font-medium text-slate-400 italic border border-slate-200 bg-slate-50">
+            View Only Mode
+          </div>
         )}
         {order.status === 'cancelled' && (
           <div className="text-center text-xs text-slate-300 font-bold uppercase tracking-widest py-2">

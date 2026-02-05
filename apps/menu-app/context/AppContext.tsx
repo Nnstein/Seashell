@@ -39,7 +39,7 @@ interface AppState {
   updateInstructions: (cartId: string, instructions: string) => void;
   removeFromCart: (cartId: string) => void;
   resetOrder: () => void;
-  handleCheckout: (paymentMethod: 'room-charge' | 'card' | 'hesabe') => void;
+  handleCheckout: (paymentMethod: 'room_charge' | 'card') => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   animateCart: boolean;
@@ -61,6 +61,7 @@ interface AppState {
   isBeachGuest: boolean;
   saveSession: (room: string, phone: string) => void;
   clearSession: () => void;
+  expectedPreparationTime: number;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -189,6 +190,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       isPlacingOrder: orderHook.isPlacingOrder,
       handleCheckout: orderHook.handleCheckout,
       resetOrder: orderHook.resetOrder,
+      expectedPreparationTime: orderHook.expectedPreparationTime,
 
       // Menu Data
       menuItems,

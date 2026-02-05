@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { CheckCircle, Tag } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
+import { getRandomPrepTimeMessage, getPrepTimeLabel } from '../utils/preparationTimeMessages';
 
 const ConfirmationScreen: React.FC = () => {
-  const { confirmedOrder, resetOrder, language, roomNumber, clearCart } = useApp();
+  const { confirmedOrder, resetOrder, language, roomNumber, clearCart, expectedPreparationTime } = useApp();
 
   // Use effectiveTotal for actual paid amount
   const total = confirmedOrder.reduce((sum, item) =>
@@ -12,6 +13,9 @@ const ConfirmationScreen: React.FC = () => {
   );
   const totalSavings = confirmedOrder.reduce((sum, item) => sum + (item.savings ?? 0), 0);
   const isRTL = language === 'ar';
+
+  // Generate a personalized prep time message
+  const prepTimeMessage = getRandomPrepTimeMessage(expectedPreparationTime, language);
 
   // Clear the active cart when this screen mounts.
   // This ensures the transition happens smoothly before we wipe the cart state.
@@ -29,6 +33,15 @@ const ConfirmationScreen: React.FC = () => {
         <p className="text-stone-200 text-xl font-sans max-w-lg mx-auto font-light leading-relaxed drop-shadow-md">
           {UI_TEXT.orderMsg[language]}
         </p>
+        {/* Expected Preparation Time - Dynamic Message */}
+        <div className="mt-8 inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-white px-8 py-4 rounded-2xl shadow-2xl transform hover:scale-105 transition-transform">
+          <p className="text-sm font-medium uppercase tracking-widest mb-1 opacity-90">
+            {getPrepTimeLabel(language)}
+          </p>
+          <p className="text-2xl md:text-3xl font-bold font-serif leading-tight">
+            {prepTimeMessage[language]}
+          </p>
+        </div>
       </div>
 
       <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-stone-100 relative">

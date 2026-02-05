@@ -21,7 +21,10 @@ export const MenuItemSchema = z.object({
     imageUrl: z.string().optional(),
     image: z.string().optional(),
     images: z.array(z.string()).optional(),
-    createdAt: z.number().optional(),
+    createdAt: z.union([
+        z.number(),
+        z.object({ seconds: z.number(), nanoseconds: z.number() })
+    ]).optional(),
     season: z.enum(['Summer', 'Winter']).optional(),
     sizes: z.array(z.object({
         name: z.string(),

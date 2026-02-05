@@ -1,8 +1,10 @@
-import React from 'react';
-import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Home, Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Home, Loader2, Clock } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
 import { CartItem } from '../context/AppContext';
+import { getPendingOrdersCount, calculatePreparationTime } from '../services/firestoreService';
+import { getRandomPrepTimeMessage } from '../utils/preparationTimeMessages';
 
 interface OrderDrawerProps {
   // Props are now optional or removed in favor of context
@@ -30,6 +32,28 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
   const totalSavings = cart.reduce((sum, item) => sum + (item.savings ?? 0), 0);
   const isRTL = language === 'ar';
   const [paymentMethod, setPaymentMethod] = React.useState<'room_charge' | 'card'>('room_charge');
+  const [estimatedPrepTime, setEstimatedPrepTime] = React.useState<number>(30);
+  const [loadingPrepTime, setLoadingPrepTime] = React.useState(false);
+
+  // Fetch estimated prep time when drawer opens or cart changes
+  useEffect(() => {
+    const fetchPrepTime = async () => {
+      if (cart.length > 0 && isCartOpen) {
+        setLoadingPrepTime(true);
+        try {
+          const pendingCount = await getPendingOrdersCount();
+          const prepTime = calculatePreparationTime(pendingCount);
+          setEstimatedPrepTime(prepTime);
+        } catch (error) {
+          console.error('Error fetching prep time:', error);
+        } finally {
+          setLoadingPrepTime(false);
+        }
+      }
+    };
+    
+    fetchPrepTime();
+  }, [cart.length, isCartOpen]);
 
   const getName = (item: CartItem) => {
     if (typeof item.name === 'object' && item.name !== null) {
@@ -215,6 +239,33 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                 <div>
                   <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-1">{UI_TEXT.total[language]}</p>
                   <span className="font-serif text-stone-900 text-2xl sm:text-3xl font-bold">{total.toFixed(3)} <span className="text-xs sm:text-sm font-sans font-normal text-stone-400">KWD</span></span>
+                </div>
+              </div>
+
+              {/* Estimated Preparation Time Display */}
+              <div className="mb-4 sm:mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4 animate-fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-md">
+                    {loadingPrepTime ? (
+                      <Loader2 className="animate-spin text-white" size={20} />
+                    ) : (
+                      <Clock className="text-white" size={20} />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-amber-700 font-bold mb-1">
+                      {language === 'ar' ? 'الوقت المقدر' : 'Estimated Delivery'}
+                    </p>
+                    {loadingPrepTime ? (
+                      <p className="text-sm text-amber-600 animate-pulse">
+                        {language === 'ar' ? 'جاري الحساب...' : 'Calculating...'}
+                      </p>
+                    ) : (
+                      <p className="text-base sm:text-lg font-bold text-stone-800 leading-tight">
+                        {getRandomPrepTimeMessage(estimatedPrepTime, language)[language]}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 

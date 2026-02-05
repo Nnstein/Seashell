@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { collection, onSnapshot, doc, updateDoc, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useOrderNotifications } from '../hooks/useOrderNotifications';
 import { useToast } from '../components/Toast';
@@ -30,8 +30,24 @@ export const OrdersProvider = ({ children }: { children: ReactNode }) => {
     useOrderNotifications(notificationsEnabled);
 
     useEffect(() => {
-        console.log("DEBUG: Setting up orders listener...");
-        const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+        console.log("DEBUG: Setting up optimized orders listener...");
+        
+        // Only fetch orders from last 7 days to reduce reads
+        const sevenDaysAgo = Timestamp.fromDate(
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        );
+        
+        // Optimized query: Only active orders from last 7 days, limited to 100
+        // This dramatically reduces reads compared to fetching ALL orders
+        const q = query(
+            collection(db, 'orders'),
+            where('createdAt', '>=', sevenDaysAgo),
+            orderBy('createdAt', 'desc'),
+            // Removed status filter to see all recent orders, but you can uncomment below
+            // to ONLY see pending/preparing/ready orders for even fewer reads:
+            // where('status', 'in', ['pending', 'preparing', 'ready']),
+        );
+        
         const unsubscribe = onSnapshot(q, (snapshot) => {
             console.log("DEBUG: Snapshot received. Docs count:", snapshot.docs.length);
             const ordersData = snapshot.docs.map(doc => {

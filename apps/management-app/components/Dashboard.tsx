@@ -1,29 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Order, OrderStatus } from '../src/types';
+import { Order, OrderStatus, MenuSettings } from '../src/types';
 import OrderCard from './OrderCard';
 import SearchBar from './SearchBar';
+import CloseMenuModal from './CloseMenuModal';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell, XAxis } from 'recharts';
-import { LayoutGrid, List, ShoppingBag, Clock, Bell, BellOff, Volume2 } from 'lucide-react';
+import { LayoutGrid, List, ShoppingBag, Clock, Bell, BellOff, Volume2, DoorOpen, DoorClosed, Star } from 'lucide-react';
 import { useOrders } from '../context/OrdersContext';
 import { unlockAudio, isAudioUnlocked, requestNotificationPermission } from '../utils/notifications';
+import { getPendingOrdersCount, setMenuStatus, getMenuSettings, toggleOrderVIP } from '../services/firestoreService';
 
 
 
 interface DashboardProps {
     orders: Order[];
     onUpdateStatus: (id: string, status: Order['status']) => void;
+    userRole: 'admin' | 'kitchen';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
+const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus, userRole }) => {
     const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
     const [searchQuery, setSearchQuery] = useState('');
     const [audioReady, setAudioReady] = useState(false);
     const { notificationsEnabled, toggleNotifications } = useOrders();
+    const [pendingCount, setPendingCount] = useState(0);
+    const [menuIsOpen, setMenuIsOpen] = useState(true);
+    const [isToggling, setIsToggling] = useState(false);
+    const [showCloseModal, setShowCloseModal] = useState(false);
 
-    // Check audio unlock status on mount
+    // Fetch pending orders count and menu status
+    const fetchMenuStatus = async () => {
+        const count = await getPendingOrdersCount();
+        setPendingCount(count);
+        
+        const settings = await getMenuSettings();
+        if (settings) {
+            setMenuIsOpen(settings.menuOpen ?? true);
+        }
+    };
+
+    // Check audio unlock status and fetch menu status on mount
     useEffect(() => {
         setAudioReady(isAudioUnlocked());
+        fetchMenuStatus();
     }, []);
+
+    // Update pending count when orders change
+    useEffect(() => {
+        fetchMenuStatus();
+    }, [orders]);
 
     // Handle notification toggle with audio unlock
     const handleNotificationToggle = async () => {
@@ -34,6 +58,58 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
             await requestNotificationPermission();
         }
         toggleNotifications();
+    };
+
+    // Handle menu open/close toggle
+    const handleMenuToggle = () => {
+        // If menu is currently open, show modal to get custom message
+        if (menuIsOpen) {
+            setShowCloseModal(true);
+        } else {
+            // If menu is closed, reopen it (no message needed)
+            handleReopenMenu();
+        }
+    };
+
+    // Reopen menu (simple toggle)
+    const handleReopenMenu = async () => {
+        setIsToggling(true);
+        try {
+            await setMenuStatus(true); // Open without message
+            setMenuIsOpen(true);
+        } catch (error) {
+            console.error('Error reopening menu:', error);
+            alert('Failed to reopen menu');
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+
+    // Close menu with custom message
+    const handleCloseMenuWithMessage = async (message: string) => {
+        setIsToggling(true);
+        try {
+            await setMenuStatus(false, message);
+            setMenuIsOpen(false);
+            setShowCloseModal(false);
+        } catch (error) {
+            console.error('Error closing menu:', error);
+            alert('Failed to close menu');
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    // Handle VIP toggle
+    const handleToggleVIP = async (orderId: string, currentVIPStatus: boolean) => {
+        try {
+            await toggleOrderVIP(orderId, !currentVIPStatus);
+            // The order will update via the real-time listener in OrdersContext
+        } catch (error) {
+            console.error('Error toggling VIP status:', error);
+            alert('Failed to toggle VIP status');
+        }
     };
 
     // Calculate Stats
@@ -112,6 +188,44 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Menu Open/Close Toggle - Kitchen Capacity Management */}
+                    {userRole === 'admin' && (
+                        <button
+                            onClick={handleMenuToggle}
+                            disabled={isToggling || (menuIsOpen && pendingCount >= 10) || (!menuIsOpen && pendingCount > 6)}
+                            className={`flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 border ${
+                                menuIsOpen
+                                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                    : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                            } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''} ${
+                                (menuIsOpen && pendingCount >= 10) || (!menuIsOpen && pendingCount > 6)
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : ''
+                            }`}
+                            title={
+                                menuIsOpen && pendingCount >= 10
+                                    ? 'Menu will auto-close at 10+ pending orders'
+                                    : !menuIsOpen && pendingCount > 6
+                                    ? 'Menu can reopen when pending orders ≤ 6'
+                                    : menuIsOpen
+                                    ? `Menu OPEN - ${pendingCount} pending order${pendingCount !== 1 ? 's' : ''}`
+                                    : `Menu CLOSED - ${pendingCount} pending order${pendingCount !== 1 ? 's' : ''}`
+                            }
+                        >
+                            {menuIsOpen ? <DoorOpen size={16} className="mr-2" /> : <DoorClosed size={16} className="mr-2" />}
+                            <span className="hidden sm:inline">
+                                {menuIsOpen ? 'Menu OPEN' : 'Menu CLOSED'}
+                            </span>
+                            <span className="sm:hidden">{menuIsOpen ? 'OPEN' : 'CLOSED'}</span>
+                            <span className="ml-2 bg-white px-2 py-0.5 rounded-full text-xs font-bold">
+                                {pendingCount}
+                            </span>
+                            {pendingCount >= 10 && menuIsOpen && (
+                                <span className="ml-1 text-xs">⚠️</span>
+                            )}
+                        </button>
+                    )}
+
                     {/* Notification Toggle with Audio Unlock */}
                     <button
                         onClick={handleNotificationToggle}
@@ -220,7 +334,13 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                             .filter(o => o.status === col.status)
                                             .sort((a, b) => getTime(b) - getTime(a))
                                             .map(order => (
-                                                <OrderCard key={order.id} order={order} onUpdateStatus={onUpdateStatus} />
+                                                <OrderCard 
+                                                    key={order.id} 
+                                                    order={order} 
+                                                    onUpdateStatus={onUpdateStatus} 
+                                                    onToggleVIP={handleToggleVIP}
+                                                    userRole={userRole} 
+                                                />
                                             ))
                                         }
                                         {filteredOrders.filter(o => o.status === col.status).length === 0 && (
@@ -256,7 +376,30 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                 <td className="px-6 py-4 font-bold text-ink">#{order.id.slice(0, 6)}</td>
                                                 <td className="px-6 py-4 text-slate-500">{new Date(getTime(order)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                                                 <td className="px-6 py-4 font-medium text-ink">
-                                                    <div>{order.guestName || 'Guest'}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{order.guestName || 'Guest'}</span>
+                                                        {/* VIP Star Toggle - List View */}
+                                                        {userRole === 'admin' && (
+                                                            <button
+                                                                onClick={() => handleToggleVIP(order.id, order.isVIP || false)}
+                                                                className={`p-0.5 rounded transition-all ${
+                                                                    order.isVIP 
+                                                                        ? 'text-amber-500 hover:text-amber-600' 
+                                                                        : 'text-slate-300 hover:text-amber-400'
+                                                                }`}
+                                                                title={order.isVIP ? 'Remove VIP' : 'Mark as VIP'}
+                                                            >
+                                                                <Star size={14} fill={order.isVIP ? 'currentColor' : 'none'} />
+                                                            </button>
+                                                        )}
+                                                        {/* VIP Badge for Kitchen Staff */}
+                                                        {userRole === 'kitchen' && order.isVIP && (
+                                                            <span className="bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5">
+                                                                <Star size={10} fill="white" />
+                                                                VIP
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="text-xs text-slate-400 mb-1">Rm {order.roomNumber}</div>
                                                     {order.phoneNumber && (
                                                         <div className="text-xs text-slate-400 mb-1">📞 {order.phoneNumber}</div>
@@ -297,13 +440,16 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    {nextStatus && (
+                                                    {nextStatus && userRole === 'admin' && (
                                                         <button
                                                             onClick={() => onUpdateStatus(order.id, nextStatus)}
                                                             className="bg-ink text-white hover:bg-gold hover:text-ink font-bold text-xs uppercase tracking-wider px-4 py-2 transition-colors"
                                                         >
                                                             Mark {nextStatus}
                                                         </button>
+                                                    )}
+                                                    {nextStatus && userRole === 'kitchen' && (
+                                                        <span className="text-xs text-slate-400 italic">View Only</span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -315,6 +461,14 @@ const Dashboard: React.FC<DashboardProps> = ({ orders, onUpdateStatus }) => {
                     </div>
                 )}
             </div>
+
+            {/* Close Menu Modal */}
+            <CloseMenuModal 
+                isOpen={showCloseModal}
+                onClose={() => setShowCloseModal(false)}
+                onConfirm={handleCloseMenuWithMessage}
+                isSubmitting={isToggling}
+            />
         </div>
     );
 };

@@ -28,8 +28,8 @@ const App: React.FC = () => {
     setMenu(menuItems);
   };
 
-  const handleLogin = (username: string) => {
-    setUser({ username, role: 'admin' });
+  const handleLogin = (username: string, role: 'admin' | 'kitchen') => {
+    setUser({ username, role });
   };
 
   const handleUpdateOrderStatus = (id: string, status: OrderStatus) => {
@@ -110,22 +110,27 @@ const App: React.FC = () => {
             <LayoutDashboard size={20} className={`mr-3 ${activeTab === 'dashboard' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
             <span className="text-sm font-medium tracking-wide">Dashboard</span>
           </button>
-          <button
-            onClick={() => handleNavClick('menu')}
-            className={`w-full flex items-center px-4 py-3 rounded transition-all duration-300 group
-                ${activeTab === 'menu' ? 'bg-slate-800 text-gold border-l-2 border-gold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
-          >
-            <UtensilsCrossed size={20} className={`mr-3 ${activeTab === 'menu' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
-            <span className="text-sm font-medium tracking-wide">Menu Editor</span>
-          </button>
-          <button
-            onClick={() => handleNavClick('history')}
-            className={`w-full flex items-center px-4 py-3 rounded transition-all duration-300 group
-                ${activeTab === 'history' ? 'bg-slate-800 text-gold border-l-2 border-gold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
-          >
-            <History size={20} className={`mr-3 ${activeTab === 'history' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
-            <span className="text-sm font-medium tracking-wide">Order History</span>
-          </button>
+          {/* Only show Menu Editor and Order History for admin users */}
+          {user.role === 'admin' && (
+            <>
+              <button
+                onClick={() => handleNavClick('menu')}
+                className={`w-full flex items-center px-4 py-3 rounded transition-all duration-300 group
+                    ${activeTab === 'menu' ? 'bg-slate-800 text-gold border-l-2 border-gold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+              >
+                <UtensilsCrossed size={20} className={`mr-3 ${activeTab === 'menu' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
+                <span className="text-sm font-medium tracking-wide">Menu Editor</span>
+              </button>
+              <button
+                onClick={() => handleNavClick('history')}
+                className={`w-full flex items-center px-4 py-3 rounded transition-all duration-300 group
+                    ${activeTab === 'history' ? 'bg-slate-800 text-gold border-l-2 border-gold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+              >
+                <History size={20} className={`mr-3 ${activeTab === 'history' ? 'text-gold' : 'text-slate-500 group-hover:text-white'}`} />
+                <span className="text-sm font-medium tracking-wide">Order History</span>
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="p-6 border-t border-slate-800">
@@ -135,7 +140,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium text-slate-200 truncate font-serif">{user.username}</p>
-              <p className="text-[10px] text-slate-500 uppercase">Administrator</p>
+              <p className="text-[10px] text-slate-500 uppercase">{user.role === 'admin' ? 'Administrator' : 'Kitchen Staff'}</p>
             </div>
           </div>
           <button
@@ -161,7 +166,7 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-hidden bg-paper">
           <div className="h-full max-w-full">
             {activeTab === 'dashboard' && (
-              <Dashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} />
+              <Dashboard orders={orders} onUpdateStatus={handleUpdateOrderStatus} userRole={user.role} />
             )}
             {activeTab === 'menu' && (
               <MenuEditor menu={menu} onUpdate={handleMenuUpdate} />
