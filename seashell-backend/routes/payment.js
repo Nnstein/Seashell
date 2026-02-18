@@ -114,6 +114,7 @@ router.get('/failure', (req, res) => {
     try {
         const encryptedData = req.query.data;
         let errorMessage = 'The payment was cancelled or failed.';
+        let errorCode = 'PAYMENT_FAILED';
         let errorDetails = null;
         
         if (encryptedData) {
@@ -121,39 +122,34 @@ router.get('/failure', (req, res) => {
                 const result = hesabeService.handlePaymentCallback(encryptedData);
                 errorMessage = result.message || errorMessage;
                 errorDetails = result.data;
+                
+                // Extract specific error codes if available
+                if (result.data && result.data.resultCode) {
+                    errorCode = result.data.resultCode;
+                }
             } catch (e) {
                 console.error('Could not decrypt failure data:', e);
+                errorCode = 'DECRYPT_ERROR';
             }
         }
         
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Payment Failed</title>
-                <style>
-                    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-                    .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; max-width: 500px; }
-                    h1 { color: #e74c3c; }
-                    .icon { font-size: 64px; margin-bottom: 20px; }
-                    .retry-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 20px; text-decoration: none; display: inline-block; }
-                    .retry-btn:hover { opacity: 0.9; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="icon">❌</div>
-                    <h1>Payment Failed</h1>
-                    <p>${errorMessage}</p>
-                    <a href="/" class="retry-btn">Try Again</a>
-                </div>
-            </body>
-            </html>
-        `);
+        // Log the failure for debugging
+        console.log('Payment failure:', { errorCode, errorMessage, errorDetails });
+        
+        // Redirect to menu app with error info
+        const menuAppUrl = process.env.MENU_APP_URL || 'http://localhost:5173';
+        const params = new URLSearchParams({
+            success: 'false',
+            error: errorMessage,
+            errorCode: errorCode
+        });
+        
+        res.redirect(`${menuAppUrl}/payment-callback?${params.toString()}`);
         
     } catch (error) {
         console.error('Failure callback error:', error);
-        res.status(500).send('Error processing payment failure');
+        const menuAppUrl = process.env.MENU_APP_URL || 'http://localhost:5173';
+        res.redirect(`${menuAppUrl}/payment-callback?success=false&error=Payment+processing+error&errorCode=SYSTEM_ERROR`);
     }
 });
 

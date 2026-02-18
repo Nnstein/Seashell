@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { MenuItem } from '../src/types';
 
 // Define CartItem locally as it extends MenuItem with quantity and pricing info
@@ -26,6 +26,28 @@ export interface CartItem extends MenuItem {
 export const useCart = () => {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [animateCart, setAnimateCart] = useState(false);
+
+    // Restore cart from pending_order if user is returning from a failed payment
+    useEffect(() => {
+        const pendingOrderStr = localStorage.getItem('pending_order');
+        if (pendingOrderStr) {
+            try {
+                const pendingOrder = JSON.parse(pendingOrderStr);
+                // Check if we're NOT on the payment-callback page (user returned after failure)
+                if (pendingOrder.cart && !window.location.pathname.includes('payment-callback')) {
+                    // Restore the cart with proper CartItem structure
+                    const restoredCart: CartItem[] = pendingOrder.cart.map((item: any) => ({
+                        ...item,
+                        cartId: item.cartId || Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                    }));
+                    setCart(restoredCart);
+                    console.log('Cart restored from pending order');
+                }
+            } catch (e) {
+                console.error('Failed to restore cart from pending order:', e);
+            }
+        }
+    }, []);
 
     // Enhanced addToCart that accepts pre-calculated pricing
     const addToCart = useCallback((

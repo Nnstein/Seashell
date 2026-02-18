@@ -71,7 +71,7 @@ MENU_APP_URL=http://localhost:5173
 ### Frontend (`.env`)
 
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyBLqg7SLkSavkPKU9HawOzZVauXREYDKMg
+VITE_FIREBASE_API_KEY='Seashell Meal Menu (auto created by Firebase)'
 VITE_BACKEND_URL=http://localhost:3001
 ```
 
