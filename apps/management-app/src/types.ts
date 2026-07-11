@@ -30,9 +30,9 @@ export interface MenuItem {
     name: string | { en: string; ar: string };
     description: string | { en: string; ar: string };
     price: number;
-    category: Category;
+    category: string; // Relaxed from Category to string for dynamic support
     menuType: 'All Day' | 'Breakfast' | 'Lunch' | 'Dinner';
-    menu?: 'presto' | 'room-service'; // Which menu this item belongs to
+    menu?: 'presto' | 'room-service' | 'seashell'; // Which menu this item belongs to
     isAvailable: boolean;
     imageUrl?: string;
     image?: string; // For backward compatibility
@@ -41,6 +41,7 @@ export interface MenuItem {
 
     // New fields for Multi-Menu & Customization
     season?: 'Summer' | 'Winter';
+    sortOrder?: number;
     sizes?: { name: string; price: number }[];
     addons?: { name: string; price: number }[];
     note?: string; // e.g. "Served with cream"
@@ -94,15 +95,16 @@ export interface Order {
     guestId?: string;
     status: OrderStatus;
     totalAmount: number;
-    paymentMethod?: 'cash' | 'card' | 'room-charge' | 'hesabe';
+    paymentMethod?: 'card' | 'hesabe';
     createdAt: number;
     items: OrderItem[];
     chairNumber?: string; // For Beach Guests
     phoneNumber?: string;
-    menu?: 'presto' | 'room-service'; // Which menu this order was placed from
+    menu?: 'presto' | 'room-service' | 'seashell'; // Which menu this order was placed from
     expectedPreparationTime?: number; // Estimated preparation time in minutes shown to guest
     isVIP?: boolean; // VIP status - manager can tag important orders
     notes?: string; // Special notes for the order
+    isLatePayment?: boolean; // Flag to indicate if payment was received significantly after the order was placed
 }
 
 export interface Guest {
@@ -117,15 +119,47 @@ export interface Guest {
 
 export interface User {
     username: string;
-    role: 'admin' | 'kitchen';
+    role: 'admin' | 'admin2' | 'seashell' | 'room-service' | 'presto' | 'kitchen';
+    kitchenContext?: 'room-service' | 'seashell' | 'presto'; // Only for the 'kitchen' role
 }
 
 export interface MenuSettings {
     id: string; // 'global_settings'
     activeSeason: 'Summer' | 'Winter';
-    activeMenu: 'presto' | 'room-service'; // Which menu is currently active for guests
-    menuOpen?: boolean; // Whether the menu is accepting orders (kitchen capacity management)
-    closeMessage?: string; // Custom close message (English) - UI wrapper is bilingual
+    activeMenu: 'presto' | 'room-service' | 'seashell'; 
+    lastMenuUpdate?: number; // Timestamp of last menu change for cache busting
+    
+    // Independent menu statuses
+    menuStatus?: {
+        'room-service': { isOpen: boolean; closeMessage?: string };
+        'presto': { isOpen: boolean; closeMessage?: string };
+        'seashell': { isOpen: boolean; closeMessage?: string };
+    };
+
+    // Dynamic categories for each menu
+    categories?: {
+        'room-service'?: string[];
+        'presto'?: string[];
+        'seashell'?: string[];
+    };
+
+    adminEmail?: string;
+    admin2Email?: string;
+
+    // Keep legacy fields for backward compatibility during migration
+    menuOpen?: boolean; 
+    closeMessage?: string; 
+}
+
+export interface LocationSection {
+    id: string; // e.g., 'sunbeds', 'gazebo_beds', 'rooms', 'presto'
+    name: string; // Display name
+    prefix: string; // Prefix entered by guest (e.g. 'GB', 'SB', 'P'). Can be empty string for numbers only.
+    ranges?: { min: number; max: number }[]; // Allowed numeric ranges
+    menu: 'seashell' | 'room-service' | 'presto'; // Assigned menu
+    isDefault: boolean; // If true, raw numbers on the respective page (beach vs room) map to this section
+    padLength: number; // e.g., 3 for SB005, 0 for 101 or P1
+    requiresPhone: boolean;
 }
 
 export type Language = 'en' | 'ar';

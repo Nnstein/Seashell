@@ -8,14 +8,15 @@ interface Toast {
     message: string;
     type: ToastType;
     duration?: number;
+    details?: string;
 }
 
 interface ToastContextType {
-    showToast: (message: string, type?: ToastType, duration?: number) => void;
-    showSuccess: (message: string) => void;
-    showError: (message: string) => void;
-    showWarning: (message: string) => void;
-    showInfo: (message: string) => void;
+    showToast: (message: string, type?: ToastType, duration?: number, details?: string) => void;
+    showSuccess: (message: string, details?: string) => void;
+    showError: (message: string, details?: string) => void;
+    showWarning: (message: string, details?: string) => void;
+    showInfo: (message: string, details?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -27,9 +28,9 @@ export const ToastProvider = ({ children }: PropsWithChildren) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000) => {
+    const showToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000, details?: string) => {
         const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-        const toast: Toast = { id, message, type, duration };
+        const toast: Toast = { id, message, type, duration, details };
 
         setToasts(prev => [...prev, toast]);
 
@@ -38,10 +39,10 @@ export const ToastProvider = ({ children }: PropsWithChildren) => {
         }
     }, [removeToast]);
 
-    const showSuccess = useCallback((message: string) => showToast(message, 'success'), [showToast]);
-    const showError = useCallback((message: string) => showToast(message, 'error', 6000), [showToast]);
-    const showWarning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
-    const showInfo = useCallback((message: string) => showToast(message, 'info'), [showToast]);
+    const showSuccess = useCallback((message: string, details?: string) => showToast(message, 'success', 4000, details), [showToast]);
+    const showError = useCallback((message: string, details?: string) => showToast(message, 'error', 5000, details), [showToast]);
+    const showWarning = useCallback((message: string, details?: string) => showToast(message, 'warning', 4000, details), [showToast]);
+    const showInfo = useCallback((message: string, details?: string) => showToast(message, 'info', 4000, details), [showToast]);
 
     const getIcon = (type: ToastType) => {
         switch (type) {
@@ -80,7 +81,17 @@ export const ToastProvider = ({ children }: PropsWithChildren) => {
                         <div className="flex-shrink-0 mt-0.5">
                             {getIcon(toast.type)}
                         </div>
-                        <p className="flex-1 text-sm font-medium">{toast.message}</p>
+                        <div className="flex-1 flex flex-col items-start">
+                            <p className="text-sm font-medium whitespace-pre-line">{toast.message}</p>
+                            {toast.details && (
+                                <button 
+                                    onClick={() => alert(`Technical Detail:\n\n${toast.details}`)}
+                                    className="mt-1 text-xs font-semibold underline opacity-80 hover:opacity-100 transition-opacity text-left"
+                                >
+                                    Technical Detail
+                                </button>
+                            )}
+                        </div>
                         <button
                             onClick={() => removeToast(toast.id)}
                             className="flex-shrink-0 p-1 rounded-full hover:bg-black/10 transition-colors"

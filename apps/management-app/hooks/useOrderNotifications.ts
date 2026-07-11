@@ -3,22 +3,39 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { startNotificationLoop, stopNotificationLoop } from '../utils/notifications';
 
-export const useOrderNotifications = (enabled: boolean = true) => {
+export const useOrderNotifications = (enabled: boolean = true, userRole?: string, kitchenContext?: string) => {
     const lastOrderIdRef = useRef<string | null>(null);
     const isInitialLoadRef = useRef(true);
     const hasNotifiedRef = useRef(false);
 
     useEffect(() => {
-        if (!enabled) {
+        if (!enabled || !userRole) {
             stopNotificationLoop();
             return;
         }
 
-        // Listen to all pending orders
-        const pendingOrdersQuery = query(
+        let pendingOrdersQuery = query(
             collection(db, 'orders'),
             where('status', '==', 'pending')
         );
+
+        if (userRole !== 'admin' && userRole !== 'admin2') {
+            if (userRole === 'kitchen') {
+                if (kitchenContext) {
+                    pendingOrdersQuery = query(
+                        collection(db, 'orders'),
+                        where('status', '==', 'pending'),
+                        where('menu', '==', kitchenContext)
+                    );
+                }
+            } else {
+                pendingOrdersQuery = query(
+                    collection(db, 'orders'),
+                    where('status', '==', 'pending'),
+                    where('menu', '==', userRole)
+                );
+            }
+        }
 
         const unsubscribe = onSnapshot(pendingOrdersQuery, (snapshot) => {
             const pendingCount = snapshot.size;
@@ -70,6 +87,8 @@ export const useOrderNotifications = (enabled: boolean = true) => {
         return () => {
             unsubscribe();
             stopNotificationLoop();
+            hasNotifiedRef.current = false;
+            isInitialLoadRef.current = true;
         };
-    }, [enabled]);
+    }, [enabled, userRole, kitchenContext]);
 };

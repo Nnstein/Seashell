@@ -10,23 +10,22 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-export const generateMenuDescription = async (dishName: string, ingredients: string): Promise<{ description: string, suggestedPrice: number } | null> => {
+export const generateMenuDescription = async (dishName: string, ingredients: string): Promise<{ description: string } | null> => {
   const ai = getAI();
   if (!ai) return null;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Generate a mouth-watering, high-end resort style menu description for a dish named "${dishName}" containing these main ingredients: "${ingredients}". Also suggest a price in USD for a luxury resort.`,
+      contents: `Generate a mouth-watering, high-end resort style menu description for a dish named "${dishName}" containing these main ingredients: "${ingredients}".`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            description: { type: Type.STRING, description: "A 1-2 sentence appetizing description." },
-            suggestedPrice: { type: Type.NUMBER, description: "A suggested price number." }
+            description: { type: Type.STRING, description: "A 1-2 sentence appetizing description." }
           },
-          required: ["description", "suggestedPrice"]
+          required: ["description"]
         }
       }
     });

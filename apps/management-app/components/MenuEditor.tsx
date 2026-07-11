@@ -1,57 +1,108 @@
 import React, { useState, useEffect } from 'react';
-import { MenuItem, Category } from '../src/types';
+import { MenuItem, Category, MenuSettings } from '../src/types';
 import { getCategoriesByMenu } from '../constants';
 import { generateMenuDescription } from '../services/geminiService';
 import { addMenuItem, updateMenuItem, deleteMenuItem, getMenuItems, updateMenuSettings, getMenuSettings } from '../services/firestoreService';
 import { uploadImage } from '../services/storageService';
 import SearchBar from './SearchBar';
-import { X, Plus, Sparkles, Loader2, Image as ImageIcon, DollarSign, Edit3, Trash2, Calendar, CheckCircle, Upload } from 'lucide-react';
+import CategoryManager from './CategoryManager';
+import { useToast } from './Toast';
+import { X, Plus, Sparkles, Loader2, Image as ImageIcon, DollarSign, Edit3, Trash2, Calendar, CheckCircle, Upload, Settings, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface MenuEditorProps {
     menu: MenuItem[];
     onUpdate: () => void;
+    userRole?: string;
+    isReadOnly?: boolean;
 }
 
-const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
+const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate, userRole, isReadOnly = false }) => {
     const [editingItem, setEditingItem] = useState<Partial<MenuItem> | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [filterCategory, setFilterCategory] = useState<Category | 'All'>('All');
+    const [filterCategory, setFilterCategory] = useState<string | 'All'>('All');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [viewSeason, setViewSeason] = useState<'Summer' | 'Winter'>('Summer');
     const [activeSeason, setActiveSeason] = useState<'Summer' | 'Winter'>('Summer');
-    const [viewMenu, setViewMenu] = useState<'presto' | 'room-service'>('room-service');
-    const [activeMenu, setActiveMenu] = useState<'presto' | 'room-service'>('room-service');
+    const [viewMenu, setViewMenu] = useState<'presto' | 'room-service' | 'seashell'>('room-service');
+    const [activeMenu, setActiveMenu] = useState<'presto' | 'room-service' | 'seashell'>('room-service');
+    const [settings, setSettings] = useState<MenuSettings | null>(null);
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
     const [hasExistingData, setHasExistingData] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const { showSuccess, showError, showWarning } = useToast();
+
+    // Derived: is this user a super-admin or admin2 (full cross-menu access)?
+    const isAdminRole = userRole === 'admin' || userRole === 'admin2';
+
+    // The outlet menu that this non-admin user is locked to (null for admins)
+    const lockedMenu: 'presto' | 'room-service' | 'seashell' | null =
+        userRole === 'seashell' ? 'seashell' :
+        userRole === 'presto' ? 'presto' :
+        userRole === 'room-service' ? 'room-service' :
+        null;
 
     // Load active season and menu on mount
     const init = async () => {
         if (menu.length > 0) setHasExistingData(true);
-        const settings = await getMenuSettings();
-        if (settings) {
-            setActiveSeason(settings.activeSeason);
-            setActiveMenu(settings.activeMenu || 'room-service');
-            setViewMenu(settings.activeMenu || 'room-service');
+        const fetchedSettings = await getMenuSettings();
+        if (fetchedSettings) {
+            setSettings(fetchedSettings);
+            setActiveSeason(fetchedSettings.activeSeason);
+            setActiveMenu(fetchedSettings.activeMenu || 'room-service');
+            
+            // Admin (both admin and admin2) can switch freely; outlet staff are locked
+            if (lockedMenu) {
+                setViewMenu(lockedMenu);
+            } else {
+                setViewMenu(fetchedSettings.activeMenu || 'room-service');
+            }
         }
     };
 
     useEffect(() => {
         init();
-    }, [menu]);
+    }, [menu, userRole]);
+
+    // Dynamic Categories Helper
+    const getCurrentCategories = () => {
+        let cats: string[] = [];
+        if (settings?.categories?.[viewMenu]) {
+            cats = [...settings.categories[viewMenu]!];
+        } else {
+            cats = [...getCategoriesByMenu(viewMenu)];
+        }
+
+        // Add "Uncategorized" if there are items in it
+        const hasUncategorized = menu.some(item => item.menu === viewMenu && (!item.category || item.category === 'Uncategorized'));
+        if (hasUncategorized && !cats.includes('Uncategorized')) {
+            cats.push('Uncategorized');
+        }
+        return cats;
+    };
 
     const handleEdit = (item: MenuItem) => {
+        if (isReadOnly) {
+            showError("Access Denied. Menu editing is restricted to Admin roles.");
+            return;
+        }
         setEditingItem({ ...item });
         setIsModalOpen(true);
     };
 
     const handleAddNew = () => {
-        // Get the first category for the current menu view
-        const defaultCategory = getCategoriesByMenu(viewMenu)[0] || 'Breakfast';
+        if (isReadOnly) {
+            showError("Access Denied. Menu editing is restricted to Admin roles.");
+            return;
+        }
+        // Get the first category for the current menu view (dynamic)
+        const categories = getCurrentCategories();
+        const defaultCategory = categories[0] || 'Uncategorized';
         setEditingItem({
             name: '',
             description: '',
             price: 0,
-            category: defaultCategory as Category,
+            category: defaultCategory,
             menuType: 'All Day',
             image: `https://picsum.photos/400/300?random=${Math.floor(Math.random() * 100)}`,
             isAvailable: true,
@@ -62,36 +113,90 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
     };
 
     const handleDelete = async (id: string) => {
+        if (isReadOnly) {
+            showError("Access Denied. Menu editing is restricted to Admin roles.");
+            return;
+        }
         if (window.confirm('Are you sure you want to delete this item?')) {
-            await deleteMenuItem(id);
-            onUpdate();
+            try {
+                await deleteMenuItem(id);
+                onUpdate();
+                showSuccess('Item deleted successfully');
+            } catch (error) {
+                console.error("Error deleting item:", error);
+                showError('Failed to delete item');
+            }
         }
     };
 
     const handleSaveModal = async () => {
-        if (!editingItem || !editingItem.name) return;
+        if (!editingItem || !editingItem.name || editingItem.price === undefined || editingItem.price === null || isNaN(Number(editingItem.price))) {
+            showError("Unable to save item. Please ensure the price is a valid number and all required fields are filled.");
+            return;
+        }
 
         try {
-            if (editingItem.id) {
-                // Update existing
-                await updateMenuItem(editingItem.id, editingItem);
+            // 1. Strip the document ID — Firestore rejects id inside the update payload
+            const { id, ...cleanData } = editingItem;
+
+            // 2. Round all price fields to 3 decimal places (KWD standard)
+            const roundKWD = (v: number | undefined) =>
+                v !== undefined ? Math.round(Number(v) * 1000) / 1000 : undefined;
+
+            // Validate bundles
+            if (cleanData.bundlePricing && cleanData.bundlePricing.some(b => !b.price || b.price <= 0)) {
+                showWarning("Please ensure all bundle pricing tiers have a valid price greater than 0.");
+                return;
+            }
+
+            // Validate addons
+            if (cleanData.addons && cleanData.addons.some(a => !a.name.trim() || isNaN(a.price))) {
+                showWarning("Please ensure all addons have a valid name and price.");
+                return;
+            }
+
+            // Validate sizes
+            if (cleanData.sizes && cleanData.sizes.some(s => !s.name.trim() || isNaN(s.price))) {
+                showWarning("Please ensure all sizes have a valid name and price.");
+                return;
+            }
+
+            const rawPayload: any = {
+                ...cleanData,
+                price: roundKWD(Number(cleanData.price) || 0)!,
+                discountPrice: cleanData.discountPrice !== undefined ? roundKWD(cleanData.discountPrice) : null,
+                discountLabel: cleanData.discountLabel || null,
+                sizes: cleanData.sizes ? cleanData.sizes.map(s => ({ ...s, price: roundKWD(s.price)! })) : [],
+                addons: cleanData.addons ? cleanData.addons.map(a => ({ ...a, price: roundKWD(a.price)! })) : [],
+                bundlePricing: cleanData.bundlePricing ? cleanData.bundlePricing.map(b => ({ ...b, price: roundKWD(b.price)! })) : [],
+                tags: cleanData.tags || [],
+                note: cleanData.note || null
+            };
+
+            // 3. Remove undefined values, but keep null and empty arrays!
+            const itemToSave = Object.fromEntries(
+                Object.entries(rawPayload).filter(([, v]) => v !== undefined)
+            ) as Partial<MenuItem>;
+
+            if (id) {
+                await updateMenuItem(id, itemToSave);
             } else {
-                // Create new
-                await addMenuItem(editingItem as MenuItem);
+                await addMenuItem(itemToSave as MenuItem);
             }
 
             onUpdate();
             setIsModalOpen(false);
             setEditingItem(null);
+            showSuccess('Item saved successfully');
         } catch (error) {
             console.error("Error saving menu item:", error);
-            alert("Failed to save item. Please try again.");
+            showError("Failed to save item. Please try again.");
         }
     };
 
     const handleGenerateAI = async () => {
         if (!editingItem?.name) {
-            alert("Please enter a dish name first.");
+            showWarning("Please enter a dish name first.");
             return;
         }
         setIsGenerating(true);
@@ -103,26 +208,62 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         if (result) {
             setEditingItem(prev => ({
                 ...prev,
-                description: result.description,
-                price: prev?.price || result.suggestedPrice
+                description: result.description
             }));
+            showSuccess("Description generated successfully!");
         } else {
-            alert("Could not generate content. Check API key or try again.");
+            showError("Could not generate content. Check API key or try again.");
         }
         setIsGenerating(false);
     };
 
+    const handleMoveItem = async (item: MenuItem, direction: 'up' | 'down') => {
+        if (isReadOnly) {
+            showError("Access Denied. Menu editing is restricted to Admin roles.");
+            return;
+        }
+        
+        // Find current index in the FILTERED list (since we move relative to what we see)
+        const currentIndex = filteredMenu.findIndex(i => i.id === item.id);
+        const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        
+        if (targetIndex < 0 || targetIndex >= filteredMenu.length) return;
+        
+        const targetItem = filteredMenu[targetIndex];
+        
+        // Swap their sort orders
+        // Use timestamps as fallback for new items without sortOrder
+        const currentOrder = item.sortOrder ?? (item.createdAt as any)?.seconds ?? Date.now();
+        const targetOrder = targetItem.sortOrder ?? (targetItem.createdAt as any)?.seconds ?? Date.now() - 1;
 
+        if (item.id && targetItem.id) {
+            try {
+                await updateMenuItem(item.id, { sortOrder: targetOrder });
+                await updateMenuItem(targetItem.id, { sortOrder: currentOrder });
+                onUpdate();
+            } catch (error) {
+                console.error("Error moving item:", error);
+                showError("Failed to move item.");
+            }
+        }
+    };
 
     const handlePublishSeason = async () => {
-        const newSeason = activeSeason === 'Summer' ? 'Winter' : 'Summer';
-        await updateMenuSettings({ activeSeason: newSeason });
-        setActiveSeason(newSeason);
+        try {
+            const newSeason = activeSeason === 'Summer' ? 'Winter' : 'Summer';
+            await updateMenuSettings({ activeSeason: newSeason });
+            setActiveSeason(newSeason);
+            showSuccess(`${newSeason} menu published`);
+        } catch (error) {
+            console.error("Error publishing season:", error);
+            showError("Failed to publish season.");
+        }
     };
 
     const filteredMenu = menu.filter(item => {
         // Filter by category
-        const categoryMatch = filterCategory === 'All' || item.category === filterCategory;
+        const itemCategory = item.category || 'Uncategorized';
+        const categoryMatch = filterCategory === 'All' || itemCategory === filterCategory;
 
         // Filter by season
         const seasonMatch = item.season === viewSeason || (!item.season && viewSeason === 'Summer');
@@ -136,7 +277,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
             const query = searchQuery.toLowerCase();
             const name = typeof item.name === 'object' ? item.name.en : item.name;
             const description = typeof item.description === 'object' ? item.description.en : item.description;
-            const category = item.category;
+            const category = item.category || 'Uncategorized';
 
             searchMatch = (
                 name.toLowerCase().includes(query) ||
@@ -146,6 +287,20 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
         }
 
         return categoryMatch && seasonMatch && menuMatch && searchMatch;
+    }).sort((a, b) => {
+        // 1. Availability first (available items on top)
+        if (a.isAvailable !== b.isAvailable) {
+            return a.isAvailable ? -1 : 1;
+        }
+        // 2. Then by manual sortOrder
+        const orderA = a.sortOrder ?? 999999;
+        const orderB = b.sortOrder ?? 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        
+        // 3. Fallback to creation date
+        const timeA = (a.createdAt as any)?.seconds || 0;
+        const timeB = (b.createdAt as any)?.seconds || 0;
+        return timeB - timeA;
     });
 
     return (
@@ -155,62 +310,94 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                 {/* Title Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="min-w-0">
-                        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-ink truncate">Menu Curation</h2>
-                        <p className="text-slate-500 font-serif italic mt-1 text-sm sm:text-base">Design the guest dining experience</p>
+                        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-ink truncate">
+                            {userRole === 'admin' ? 'Menu Curation' : 
+                             userRole === 'seashell' ? 'Seashell Menu' : 
+                             userRole === 'presto' ? 'Presto Menu' : 'Room Service Menu'}
+                        </h2>
+                        <p className="text-slate-500 font-serif italic mt-1 text-sm sm:text-base">
+                            {isReadOnly ? 'Explore the culinary collection' : 'Design the guest dining experience'}
+                        </p>
                     </div>
 
-                    {/* Add New Button - Always visible */}
-                    <div className="flex gap-2 flex-shrink-0">
-
-                        <button
-                            onClick={handleAddNew}
-                            className="bg-ink text-white hover:bg-gold hover:text-ink px-4 py-2 sm:px-6 sm:py-3 transition-colors font-bold uppercase tracking-wider text-[10px] sm:text-xs flex items-center shadow-lg rounded"
-                        >
-                            <Plus size={14} className="mr-1 sm:mr-2" />
-                            <span className="hidden sm:inline">Add New Dish</span>
-                            <span className="sm:hidden">Add</span>
-                        </button>
-                    </div>
+                    {/* Add New Button - Admin Only */}
+                    {!isReadOnly && (
+                        <div className="flex gap-2 flex-shrink-0">
+                            {userRole === 'admin' && (
+                                <button
+                                    onClick={() => setShowCategoryManager(!showCategoryManager)}
+                                    className={`px-4 py-2 sm:px-6 sm:py-3 transition-colors font-bold uppercase tracking-wider text-[10px] sm:text-xs flex items-center shadow-lg rounded ${showCategoryManager ? 'bg-gold text-white' : 'bg-white text-ink border border-slate-200 hover:bg-slate-50'}`}
+                                >
+                                    <Settings size={14} className="mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Category Settings</span>
+                                    <span className="sm:hidden">Cats</span>
+                                </button>
+                            )}
+                            <button
+                                onClick={handleAddNew}
+                                className="bg-ink text-white hover:bg-gold hover:text-ink px-4 py-2 sm:px-6 sm:py-3 transition-colors font-bold uppercase tracking-wider text-[10px] sm:text-xs flex items-center shadow-lg rounded"
+                            >
+                                <Plus size={14} className="mr-1 sm:mr-2" />
+                                <span className="hidden sm:inline">Add New Dish</span>
+                                <span className="sm:hidden">Add</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
+
+                {/* Category Manager (Conditional) */}
+                {showCategoryManager && settings && !isReadOnly && (
+                    <div className="mb-6 animate-in slide-in-from-top-4 duration-300">
+                        <CategoryManager 
+                            settings={settings} 
+                            menuItems={menu} 
+                            onUpdate={onUpdate} 
+                        />
+                    </div>
+                )}
 
                 {/* Controls Row - Responsive Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Menu Switcher */}
-                    <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-between">
-                        <div className="flex flex-1">
-                            <button
-                                onClick={() => {
-                                    setViewMenu('presto');
-                                    setFilterCategory('All');
-                                }}
-                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'presto' ? 'bg-gold text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                            >
-                                Presto
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setViewMenu('room-service');
-                                    setFilterCategory('All');
-                                }}
-                                className={`flex-1 px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'room-service' ? 'bg-purple-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                            >
-                                Room Svc
-                            </button>
+                    {/* Menu Switcher - Admin Only */}
+                    {userRole === 'admin' ? (
+                        <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-between">
+                            <div className="flex flex-1">
+                                <button
+                                    onClick={() => {
+                                        setViewMenu('presto');
+                                        setFilterCategory('All');
+                                    }}
+                                    className={`flex-1 px-1 sm:px-2 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'presto' ? 'bg-gold text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    Presto
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setViewMenu('room-service');
+                                        setFilterCategory('All');
+                                    }}
+                                    className={`flex-1 px-1 sm:px-2 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'room-service' ? 'bg-purple-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    RoomSVC
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setViewMenu('seashell');
+                                        setFilterCategory('All');
+                                    }}
+                                    className={`flex-1 px-1 sm:px-2 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded transition-colors ${viewMenu === 'seashell' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                >
+                                    Seashell
+                                </button>
+                            </div>
                         </div>
-                        {activeMenu !== viewMenu && (
-                            <button
-                                onClick={async () => {
-                                    if (window.confirm(`Make ${viewMenu === 'presto' ? 'Presto' : 'Room Service'} menu live?`)) {
-                                        await updateMenuSettings({ activeMenu: viewMenu });
-                                        setActiveMenu(viewMenu);
-                                    }
-                                }}
-                                className="ml-1 flex items-center gap-1 px-2 py-1.5 bg-green-500 text-white text-[10px] font-bold uppercase rounded hover:bg-green-600"
-                            >
-                                <CheckCircle size={12} />
-                            </button>
-                        )}
-                    </div>
+                    ) : (
+                        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-center">
+                             <span className="text-[10px] sm:text-xs font-bold text-gold uppercase tracking-widest">
+                                Department: {viewMenu === 'room-service' ? 'RoomSVC' : viewMenu.charAt(0).toUpperCase() + viewMenu.slice(1)}
+                             </span>
+                        </div>
+                    )}
 
                     {/* Season Switcher */}
                     <div className="bg-white border border-slate-200 rounded-lg p-1 flex items-center justify-between">
@@ -228,12 +415,18 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                 Winter
                             </button>
                         </div>
-                        {activeSeason !== viewSeason && (
+                        {userRole === 'admin' && activeSeason !== viewSeason && (
                             <button
                                 onClick={async () => {
                                     if (window.confirm(`Make ${viewSeason} menu live?`)) {
-                                        await updateMenuSettings({ activeSeason: viewSeason });
-                                        setActiveSeason(viewSeason);
+                                        try {
+                                            await updateMenuSettings({ activeSeason: viewSeason });
+                                            setActiveSeason(viewSeason);
+                                            showSuccess(`${viewSeason} menu published`);
+                                        } catch (error) {
+                                            console.error("Error updating season:", error);
+                                            showError("Failed to make season live");
+                                        }
                                     }
                                 }}
                                 className="ml-1 px-2 py-1.5 bg-green-500 text-white text-[10px] font-bold uppercase rounded hover:bg-green-600"
@@ -243,12 +436,9 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                         )}
                     </div>
 
-                    {/* Live Indicator */}
+                    {/* Live Indicator Note */}
                     <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-center gap-2">
-                        <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Live:</span>
-                        <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase ${activeMenu === 'presto' ? 'bg-gold/10 text-gold' : 'bg-purple-500/10 text-purple-600'}`}>
-                            {activeMenu === 'presto' ? 'Presto' : 'Room'}
-                        </div>
+                        <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">All {activeSeason} Menus Are Live</span>
                         <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase ${activeSeason === 'Summer' ? 'bg-gold/10 text-gold' : 'bg-blue-500/10 text-blue-500'}`}>
                             {activeSeason === 'Summer' ? <Sparkles size={12} /> : <Calendar size={12} />}
                             {activeSeason}
@@ -266,18 +456,55 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                 </div>
             </div>
 
-            {/* Categories - Horizontal scroll on mobile */}
-            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 border-b-2 border-slate-200 flex-shrink-0 scrollbar-hide">
+            {/* Categories - Horizontal scroll with mouse drag support */}
+            <div 
+                className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 border-b-2 border-slate-200 flex-shrink-0 cursor-grab active:cursor-grabbing select-none scroll-smooth"
+                onMouseDown={(e) => {
+                    const el = e.currentTarget;
+                    const startX = e.pageX - el.offsetLeft;
+                    const scrollLeft = el.scrollLeft;
+                    
+                    const onMouseMove = (moveEvent: MouseEvent) => {
+                        const x = moveEvent.pageX - el.offsetLeft;
+                        const walk = (x - startX) * 2; // Scroll speed
+                        el.scrollLeft = scrollLeft - walk;
+                    };
+                    
+                    const onMouseUp = () => {
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    };
+                    
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }}
+                style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#d4af37 transparent'
+                }}
+            >
+                <style dangerouslySetInnerHTML={{ __html: `
+                    .scrollbar-visible::-webkit-scrollbar {
+                        height: 4px;
+                    }
+                    .scrollbar-visible::-webkit-scrollbar-track {
+                        background: transparent;
+                    }
+                    .scrollbar-visible::-webkit-scrollbar-thumb {
+                        background-color: #d4af37;
+                        border-radius: 20px;
+                    }
+                `}} />
                 <button
                     onClick={() => setFilterCategory('All')}
                     className={`px-3 sm:px-6 py-2 font-serif text-xs sm:text-sm transition-all whitespace-nowrap border rounded-lg flex-shrink-0 ${filterCategory === 'All' ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
                 >
                     All
                 </button>
-                {getCategoriesByMenu(viewMenu).map(cat => (
+                {getCurrentCategories().map(cat => (
                     <button
                         key={cat}
-                        onClick={() => setFilterCategory(cat as Category)}
+                        onClick={() => setFilterCategory(cat)}
                         className={`px-3 sm:px-6 py-2 font-serif text-xs sm:text-sm transition-all whitespace-nowrap border rounded-lg flex-shrink-0 ${filterCategory === cat ? 'bg-ink text-white border-ink' : 'text-slate-700 hover:text-ink hover:bg-slate-100 border-slate-300 bg-white'}`}
                     >
                         {cat}
@@ -292,7 +519,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                         <div key={item.id} className="bg-white p-4 group hover:shadow-xl transition-all duration-500 border border-slate-100 relative flex flex-col">
                             <div className="h-48 overflow-hidden mb-4 relative">
                                 <img
-                                    src={item.image || item.imageUrl}
+                                    src={item.images?.[0] || item.image || item.imageUrl || `https://source.unsplash.com/featured/?food,${item.category}`}
                                     alt={typeof item.name === 'object' ? item.name.en : item.name}
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale group-hover:grayscale-0"
                                 />
@@ -303,13 +530,41 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     <span className="bg-white/95 backdrop-blur text-ink text-[10px] font-bold uppercase tracking-widest px-2 py-1 shadow-sm border border-slate-100 transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300 delay-75">
                                         {item.category}
                                     </span>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-                                        className="bg-white text-ink p-2 rounded-full hover:bg-gold hover:text-white transition-colors shadow-lg transform -translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:scale-110"
-                                        title="Edit Dish"
-                                    >
-                                        <Edit3 size={16} />
-                                    </button>
+                                    
+                                    {/* Sort Controls (Only visible when filtering by category) */}
+                                    {!isReadOnly && filterCategory !== 'All' && (
+                                        <div className="flex flex-col gap-1 absolute right-12 top-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleMoveItem(item, 'up'); }}
+                                                className="bg-white text-ink p-1 rounded-full hover:bg-gold hover:text-white shadow-md"
+                                                title="Move Up"
+                                            >
+                                                <ChevronUp size={14} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleMoveItem(item, 'down'); }}
+                                                className="bg-white text-ink p-1 rounded-full hover:bg-gold hover:text-white shadow-md"
+                                                title="Move Down"
+                                            >
+                                                <ChevronDown size={14} />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {!isReadOnly && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                                            className="bg-white text-ink p-2 rounded-full hover:bg-gold hover:text-white transition-colors shadow-lg transform -translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:scale-110"
+                                            title="Edit Dish"
+                                        >
+                                            <Edit3 size={16} />
+                                        </button>
+                                    )}
+                                    {isReadOnly && (
+                                        <div className="bg-white text-ink p-2 rounded-full shadow-lg transform -translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                                            <CheckCircle size={16} className="text-green-500" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {!item.isAvailable && (
@@ -326,7 +581,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     </h3>
                                     <div className="flex flex-col items-end ml-2">
                                         {/* Show discount pricing */}
-                                        {item.discountPrice && item.discountPrice < item.price ? (
+                                        {item.discountPrice != null && item.discountPrice > 0 && item.discountPrice < item.price ? (
                                             <>
                                                 <span className="font-sans text-xs text-slate-400 line-through">{item.price.toFixed(3)}</span>
                                                 <span className="font-serif font-bold text-red-600">{item.discountPrice.toFixed(3)} KD</span>
@@ -339,7 +594,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
 
                                 {/* Discount & Bundle Badges */}
                                 <div className="flex flex-wrap gap-1 mb-2">
-                                    {item.discountPrice && item.discountPrice < item.price && (
+                                    {item.discountPrice != null && item.discountPrice > 0 && item.discountPrice < item.price && (
                                         <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                                             🏷️ {Math.round(((item.price - item.discountPrice) / item.price) * 100)}% OFF
                                         </span>
@@ -384,7 +639,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Dish Name</label>
                                     <input
                                         type="text"
-                                        value={typeof editingItem.name === 'object' ? editingItem.name.en : editingItem.name}
+                                        value={typeof editingItem.name === 'object' ? (editingItem.name as any).en : editingItem.name}
                                         onChange={e => setEditingItem({ ...editingItem, name: e.target.value })}
                                         className="w-full p-3 border-2 border-slate-300 text-ink font-serif text-lg placeholder-slate-400 focus:border-gold focus:ring-0 outline-none bg-white transition-colors shadow-sm"
                                         placeholder="e.g. Truffle Risotto"
@@ -395,17 +650,17 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     <div className="space-y-1">
                                         <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">
                                             Category
-                                            <span className={`ml-2 text-[10px] px-2 py-0.5 rounded ${editingItem.menu === 'presto' ? 'bg-gold/20 text-gold' : 'bg-purple-500/20 text-purple-600'}`}>
-                                                {editingItem.menu === 'presto' ? 'Presto' : 'Room Service'}
+                                            <span className={`ml-2 text-[10px] px-2 py-0.5 rounded ${editingItem.menu === 'presto' ? 'bg-gold/20 text-gold' : editingItem.menu === 'seashell' ? 'bg-blue-500/20 text-blue-600' : 'bg-purple-500/20 text-purple-600'}`}>
+                                                {editingItem.menu === 'presto' ? 'Presto' : editingItem.menu === 'seashell' ? 'Seashell' : 'RoomSVC'}
                                             </span>
                                         </label>
                                         <div className="relative">
                                             <select
                                                 value={editingItem.category}
-                                                onChange={e => setEditingItem({ ...editingItem, category: e.target.value as Category })}
+                                                onChange={e => setEditingItem({ ...editingItem, category: e.target.value })}
                                                 className="w-full p-3 border-2 border-slate-300 text-ink font-sans bg-white focus:border-gold focus:ring-0 outline-none appearance-none cursor-pointer shadow-sm"
                                             >
-                                                {getCategoriesByMenu(editingItem.menu || 'room-service').map(c => <option key={c} value={c}>{c}</option>)}
+                                                {getCurrentCategories().map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                             <div className="absolute right-3 top-3.5 pointer-events-none text-slate-400">▼</div>
                                         </div>
@@ -416,8 +671,13 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                             <DollarSign size={16} className="absolute left-3 top-4 text-slate-400" />
                                             <input
                                                 type="number"
-                                                value={editingItem.price}
-                                                onChange={e => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) })}
+                                                step="0.001"
+                                                min="0"
+                                                value={editingItem.price ?? ''}
+                                                onChange={e => {
+                                                    const raw = parseFloat(e.target.value);
+                                                    setEditingItem({ ...editingItem, price: isNaN(raw) ? 0 : raw });
+                                                }}
                                                 className="w-full pl-8 p-3 border-2 border-slate-300 text-ink font-serif font-bold text-lg bg-white focus:border-gold focus:ring-0 outline-none shadow-sm"
                                             />
                                         </div>
@@ -455,37 +715,70 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     </div>
                                     <div className="space-y-1">
                                         <label className="block text-xs font-bold text-ink uppercase tracking-wider mb-1">Menu</label>
-                                        <div className={`flex gap-2 sm:gap-4 p-2 sm:p-3 border-2 bg-white ${editingItem.menu === 'presto' ? 'border-gold' : 'border-purple-500'}`}>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name="menu"
-                                                    value="presto"
-                                                    checked={editingItem.menu === 'presto'}
-                                                    onChange={() => {
-                                                        const newCategory = getCategoriesByMenu('presto')[0] || 'Hot Beverages';
-                                                        setEditingItem({ ...editingItem, menu: 'presto', category: newCategory as Category });
-                                                    }}
-                                                    className="text-gold focus:ring-gold"
-                                                />
-                                                <span className={`text-sm font-serif ${editingItem.menu === 'presto' ? 'font-bold text-gold' : ''}`}>Presto</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name="menu"
-                                                    value="room-service"
-                                                    checked={editingItem.menu === 'room-service'}
-                                                    onChange={() => {
-                                                        const newCategory = getCategoriesByMenu('room-service')[0] || 'Breakfast';
-                                                        setEditingItem({ ...editingItem, menu: 'room-service', category: newCategory as Category });
-                                                    }}
-                                                    className="text-purple-500 focus:ring-purple-500"
-                                                />
-                                                <span className={`text-sm font-serif ${editingItem.menu === 'room-service' ? 'font-bold text-purple-600' : ''}`}>Room Service</span>
-                                            </label>
-                                        </div>
-                                        {editingItem.menu !== viewMenu && (
+                                        {isAdminRole ? (
+                                            // Admins can re-assign an item to any menu
+                                            <div className={`flex flex-wrap gap-2 sm:gap-4 p-2 sm:p-3 border-2 bg-white ${editingItem.menu === 'presto' ? 'border-gold' : editingItem.menu === 'seashell' ? 'border-blue-500' : 'border-purple-500'}`}>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="menu"
+                                                        value="presto"
+                                                        checked={editingItem.menu === 'presto'}
+                                                        onChange={() => {
+                                                            const prestoCats = settings?.categories?.['presto'] || getCategoriesByMenu('presto');
+                                                            const newCategory = prestoCats[0] || 'Uncategorized';
+                                                            setEditingItem({ ...editingItem, menu: 'presto', category: newCategory });
+                                                        }}
+                                                        className="text-gold focus:ring-gold"
+                                                    />
+                                                    <span className={`text-sm font-serif ${editingItem.menu === 'presto' ? 'font-bold text-gold' : ''}`}>Presto</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="menu"
+                                                        value="room-service"
+                                                        checked={editingItem.menu === 'room-service'}
+                                                        onChange={() => {
+                                                            const rsCats = settings?.categories?.['room-service'] || getCategoriesByMenu('room-service');
+                                                            const newCategory = rsCats[0] || 'Uncategorized';
+                                                            setEditingItem({ ...editingItem, menu: 'room-service', category: newCategory });
+                                                        }}
+                                                        className="text-purple-500 focus:ring-purple-500"
+                                                    />
+                                                    <span className={`text-sm font-serif ${editingItem.menu === 'room-service' ? 'font-bold text-purple-600' : ''}`}>RoomSVC</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="menu"
+                                                        value="seashell"
+                                                        checked={editingItem.menu === 'seashell'}
+                                                        onChange={() => {
+                                                            const shellCats = settings?.categories?.['seashell'] || getCategoriesByMenu('seashell');
+                                                            const newCategory = shellCats[0] || 'Uncategorized';
+                                                            setEditingItem({ ...editingItem, menu: 'seashell', category: newCategory });
+                                                        }}
+                                                        className="text-blue-500 focus:ring-blue-500"
+                                                    />
+                                                    <span className={`text-sm font-serif ${editingItem.menu === 'seashell' ? 'font-bold text-blue-600' : ''}`}>Seashell</span>
+                                                </label>
+                                            </div>
+                                        ) : (
+                                            // Outlet staff: locked badge — cannot re-assign items to another menu
+                                            <div className="flex items-center gap-2 p-3 border-2 border-slate-200 bg-slate-50">
+                                                <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded ${
+                                                    editingItem.menu === 'presto' ? 'bg-gold/10 text-gold border border-gold/30' :
+                                                    editingItem.menu === 'seashell' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                                    'bg-purple-50 text-purple-700 border border-purple-200'
+                                                }`}>
+                                                    {editingItem.menu === 'room-service' ? 'Room Service' : editingItem.menu === 'seashell' ? 'Seashell' : 'Presto'}
+                                                </span>
+                                                <span className="text-xs text-slate-400">Items are locked to your outlet</span>
+                                            </div>
+                                        )}
+
+                                        {isAdminRole && editingItem.menu !== viewMenu && (
                                             <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                                                 ⚠️ Warning: This item is in a different menu than currently viewing.
                                             </p>
@@ -798,41 +1091,80 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                         <label className={`flex-1 flex items-center justify-center border-2 border-dashed border-slate-300 p-4 rounded cursor-pointer hover:border-gold hover:bg-gold/5 transition-colors ${((editingItem.images?.length || 0) >= 5) ? 'opacity-50 pointer-events-none' : ''}`}>
                                             <input
                                                 type="file"
-                                                accept="image/*"
+                                                accept="image/jpeg,image/png,image/webp"
                                                 multiple
                                                 className="hidden"
                                                 onChange={async (e) => {
                                                     if (e.target.files) {
                                                         const files: File[] = Array.from(e.target.files);
-                                                        const remainingSlots = 5 - (editingItem.images?.length || 0);
-                                                        const filesToUpload = files.slice(0, remainingSlots);
+                                                        
+                                                        // --- SECURITY VALIDATION ---
+                                                        const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+                                                        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-                                                        // Upload logic would go here
-                                                        // For now, we'll just simulate or use a placeholder if no backend upload is ready
-                                                        // BUT we have storageService now!
-
-                                                        const uploadedUrls: string[] = [];
-                                                        for (const file of filesToUpload) {
-                                                            try {
-                                                                const path = `menu_items/${Date.now()}_${file.name}`;
-                                                                const url = await uploadImage(file, path);
-                                                                uploadedUrls.push(url);
-                                                            } catch (err) {
-                                                                console.error("Upload failed", err);
-                                                                alert("Failed to upload image");
+                                                        const validFiles = files.filter(file => {
+                                                            if (!ALLOWED_TYPES.includes(file.type)) {
+                                                                alert(`File "${file.name}" is not a supported image type (JPEG, PNG, WebP only).`);
+                                                                return false;
                                                             }
-                                                        }
+                                                            if (file.size > MAX_SIZE) {
+                                                                alert(`File "${file.name}" is too large (Max 5MB).`);
+                                                                return false;
+                                                            }
+                                                            return true;
+                                                        });
 
-                                                        setEditingItem(prev => ({
-                                                            ...prev!,
-                                                            images: [...(prev!.images || []), ...uploadedUrls]
-                                                        }));
+                                                        if (validFiles.length === 0) return;
+
+                                                        setIsUploading(true);
+
+                                                        try {
+                                                            const remainingSlots = 5 - (editingItem.images?.length || 0);
+                                                            const filesToUpload = validFiles.slice(0, remainingSlots);
+
+                                                            const uploadedUrls: string[] = [];
+                                                            for (const file of filesToUpload) {
+                                                                try {
+                                                                    const path = `menu_items/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+                                                                    
+                                                                    // Add a 15-second timeout so it doesn't hang forever if Firebase Storage isn't setup
+                                                                    const url = await Promise.race([
+                                                                        uploadImage(file, path),
+                                                                        new Promise<string>((_, reject) => 
+                                                                            setTimeout(() => reject(new Error("Upload timed out. Ensure Firebase Storage is enabled in the Firebase Console.")), 15000)
+                                                                        )
+                                                                    ]);
+                                                                    
+                                                                    uploadedUrls.push(url);
+                                                                } catch (err: any) {
+                                                                    console.error("Upload failed", err);
+                                                                    alert(`Failed to upload "${file.name}": ${err.message || 'Unknown error'}`);
+                                                                }
+                                                            }
+
+                                                            setEditingItem(prev => ({
+                                                                ...prev!,
+                                                                images: [...(prev!.images || []), ...uploadedUrls]
+                                                            }));
+                                                        } finally {
+                                                            setIsUploading(false);
+                                                            e.target.value = ''; // Reset input so same file can be selected again
+                                                        }
                                                     }
                                                 }}
                                             />
                                             <div className="flex flex-col items-center text-slate-400">
-                                                <Upload size={24} className="mb-1" />
-                                                <span className="text-xs font-bold uppercase tracking-wider">Upload Images</span>
+                                                {isUploading ? (
+                                                    <>
+                                                        <Loader2 size={24} className="mb-1 animate-spin text-gold" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-gold">Uploading...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload size={24} className="mb-1" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider">Upload Images</span>
+                                                    </>
+                                                )}
                                             </div>
                                         </label>
 
@@ -882,9 +1214,10 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ menu, onUpdate }) => {
                                     </button>
                                     <button
                                         onClick={handleSaveModal}
-                                        className="px-8 py-3 bg-ink hover:bg-gold hover:text-ink text-white font-bold text-xs uppercase tracking-widest transition-all shadow-lg"
+                                        disabled={isUploading}
+                                        className="px-8 py-3 bg-ink hover:bg-gold hover:text-ink text-white font-bold text-xs uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        Save Changes
+                                        {isUploading ? 'Uploading...' : 'Save Changes'}
                                     </button>
                                 </div>
                             </div>

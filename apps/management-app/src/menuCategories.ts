@@ -1,11 +1,32 @@
 // ===================================
 // SHARED MENU CATEGORY DEFINITIONS
 // ===================================
-// This file defines categories for BOTH menus: Presto and Room Service
+// This file defines categories for ALL menus: Presto, RoomSVC, and Seashell
 // These definitions MUST match exactly what's in Firestore!
 
-// Room Service Menu Categories (17 categories - matches seeding scripts)
+// RoomSVC Menu Categories (17 categories - matches seeding scripts)
 export const ROOM_SERVICE_CATEGORIES = [
+    'Breakfast',
+    'Appetizers',
+    'Salads',
+    'Sandwiches',
+    'Burgers',
+    'Pizza',
+    'Pasta',
+    'Seafood',
+    'Main Course',
+    'Kids',
+    'Desserts',
+    'Beverages',
+    'Smoothies',
+    'Milkshakes',
+    'Mocktails',
+    'Chai Latte',
+    'Refreshing Drinks'
+] as const;
+
+// Seashell Menu Categories (Duplicate of Room Service/RoomSVC initially)
+export const SEASHELL_CATEGORIES = [
     'Breakfast',
     'Appetizers',
     'Salads',
@@ -50,10 +71,12 @@ export const PRESTO_CATEGORIES = [
 // Union type for all categories
 export type RoomServiceCategory = typeof ROOM_SERVICE_CATEGORIES[number];
 export type PrestoCategory = typeof PRESTO_CATEGORIES[number];
-export type Category = RoomServiceCategory | PrestoCategory;
+export type SeashellCategory = typeof SEASHELL_CATEGORIES[number];
+export type Category = RoomServiceCategory | PrestoCategory | SeashellCategory;
 
 // Helper to get categories by menu type
-export const getCategoriesByMenu = (menu: 'presto' | 'room-service'): readonly string[] => {
+export const getCategoriesByMenu = (menu: 'presto' | 'room-service' | 'seashell'): readonly string[] => {
+    if (menu === 'seashell') return SEASHELL_CATEGORIES;
     return menu === 'room-service' ? ROOM_SERVICE_CATEGORIES : PRESTO_CATEGORIES;
 };
 
@@ -71,7 +94,7 @@ export const CATEGORY_NAMES: Record<string, { en: string; ar: string }> = {
     'Main Course': { en: 'Main Dishes', ar: 'الأطباق الرئيسية' },
     'Kids': { en: "Kid's Menu", ar: 'وجبات الأطفال' },
     'Desserts': { en: 'Desserts', ar: 'الحلويات' },
-    'Beverages': { en: 'Fresh Juices', ar: 'عصائر طازجة' },
+    'Beverages': { en: 'Beverages', ar: 'مشروبات' },
     'Smoothies': { en: 'Smoothies', ar: 'سموذي' },
     'Milkshakes': { en: 'Milkshakes', ar: 'ميلك شيك' },
     'Mocktails': { en: 'Mocktails', ar: 'موكتيلات' },
@@ -90,4 +113,35 @@ export const CATEGORY_NAMES: Record<string, { en: string; ar: string }> = {
     'Risotto': { en: 'Risotto', ar: 'ريزوتو' },
     'Pizzeria Chez Nous': { en: 'Pizzeria Chez Nous', ar: 'بيتزا شينو' },
     'Sweets and Fruits': { en: 'Sweets & Fruits', ar: 'حلويات وفواكه' }
+};
+
+export const CATEGORY_IMAGES: Record<string, string> = {
+    'Breakfast': '/assets/images/categories/breakfast.jpg',
+    'Appetizers': '/assets/images/categories/appetizers.jpg',
+    'Salads': '/assets/images/categories/salads.jpg',
+    'Sandwiches': '/assets/images/categories/main.jpg',
+    'Burgers': '/assets/images/categories/main.jpg',
+    'Pizza': '/assets/images/categories/pizza.jpg',
+    'Pasta': '/assets/images/categories/pasta.jpg',
+    'Seafood': '/assets/images/categories/main.jpg',
+    'Main Course': '/assets/images/categories/main.jpg',
+    'Kids': '/assets/images/categories/main.jpg',
+    'Desserts': '/assets/images/categories/sweets.jpg',
+    'Beverages': '/assets/images/categories/refreshing.jpg',
+    'Smoothies': '/assets/images/categories/smoothies.jpg',
+    'Milkshakes': '/assets/images/categories/milkshakes.jpg',
+    'Mocktails': '/assets/images/categories/cocktails.jpg',
+    'Chai Latte': '/assets/images/categories/hot.jpg',
+    'Refreshing Drinks': '/assets/images/categories/refreshing.jpg',
+    'Hot Beverages': '/assets/images/categories/hot.jpg',
+    'Cold Beverages': '/assets/images/categories/cold.jpg',
+    'Frappes': '/assets/images/categories/frappe.jpg',
+    'Fresh Juices': '/assets/images/categories/fresh-juices.jpg',
+    'Cocktails': '/assets/images/categories/cocktails.jpg',
+    'Malt Beverages': '/assets/images/categories/malt.jpg',
+    'Italian Pasta': '/assets/images/categories/pasta.jpg',
+    'Soups': '/assets/images/categories/soups.jpg',
+    'Risotto': '/assets/images/categories/risotto.jpg',
+    'Pizzeria Chez Nous': '/assets/images/categories/pizza.jpg',
+    'Sweets and Fruits': '/assets/images/categories/sweets.jpg'
 };
