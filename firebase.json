@@ -61,7 +61,19 @@
         "destination": "/housekeeping-management/index.html"
       },
       {
-        "source": "**",
+        "source": "/beach/**",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/beach",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/payment-callback",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/",
         "destination": "/index.html"
       }
     ]

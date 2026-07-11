@@ -3,81 +3,106 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ============================================
-    // MENU ITEMS - Read-only for public
-    // Staff can write (no auth check for now - internal app)
-    // ============================================
-    match /menu_items/{itemId} {
-      // Anyone can read menu items (guests browsing the menu)
-      allow read: if true;
-      
-      // Allow writes for now (Management App doesn't use Auth yet)
-      // TODO: Add authentication to Management App and use: request.auth != null
-      allow write: if true;
+    // --- Helper Functions ---
+    
+    function isSignedIn() {
+      return request.auth != null;
     }
     
-    // ============================================
-    // ORDERS - Guests can create, staff can update
-    // ============================================
-    match /orders/{orderId} {
-      // Anyone can read orders (for order tracking)
+    function getRole() {
+      return get(/databases/$(database)/documents/staff_roles/$(request.auth.uid)).data.role;
+    }
+    
+    function isStaff() {
+      return isSignedIn() && exists(/databases/$(database)/documents/staff_roles/$(request.auth.uid));
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getRole() == 'admin';
+    }
+    
+    // --- Rules ---
+
+    // STAFF ROLES - Critical security collection
+    match /staff_roles/{userId} {
+      // Users can read their own role
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // Only Admin (via backend/console) should write here
+      // But we allow the Admin user to write via dashboard if needed
+      allow write: if isAdmin();
+    }
+    
+    // MENU ITEMS
+    match /menu_items/{itemId} {
+      // Guests can browse
       allow read: if true;
+      // Only Admin can change items/prices
+      allow write: if isAdmin();
+    }
+    
+    // ORDERS
+    match /orders/{orderId} {
+      // Guests can fetch their own order by ID (but not list all)
+      allow get: if true;
+      // Staff can list and view all orders
+      allow list: if isStaff();
       
-      // Anyone can CREATE an order (guests placing orders)
+      // Anyone can CREATE an order
       allow create: if true
-        // Validate required fields exist
         && request.resource.data.roomNumber is string
         && request.resource.data.items is list
         && request.resource.data.totalAmount is number
-        // Prevent setting status to anything other than 'pending' on creation
-        && request.resource.data.status == 'pending';
+        // Force initial status
+        && request.resource.data.status in ['pending', 'awaiting_payment'];
       
-      // Allow updates for now (Management App doesn't use Auth yet)
-      // This allows status changes: pending -> preparing -> ready -> delivered -> completed
-      // TODO: Add authentication to Management App and use: request.auth != null
-      allow update: if true;
+      // Only staff can update status or details
+      // Kitchen role should be view only, but we'll let them update if we decide to
+      // Based on previous mandate: "kitchen role CANNOT update order statuses"
+      allow update: if isStaff() && getRole() != 'kitchen';
       
-      // Allow deletes for now (Management App doesn't use Auth yet)
-      // TODO: Add authentication to Management App and use: request.auth != null
-      allow delete: if true;
+      // Only Admin or department staff can delete/cleanup
+      allow delete: if isAdmin() || (isStaff() && getRole() != 'kitchen');
     }
     
-    // ============================================
-    // ORDER HISTORY - Open for now (internal use)
-    // ============================================
+    // ORDER HISTORY
     match /order_history/{orderId} {
-      // TODO: Add authentication to Management App
-      allow read, write: if true;
+      // Only staff can see history
+      allow read: if isStaff();
+      // Only staff can write to history (archiving)
+      allow write: if isStaff() && getRole() != 'kitchen';
     }
     
-    // ============================================
-    // GUESTS - Open for now (internal use)
-    // ============================================
+    // GUESTS
     match /guests/{guestId} {
-      allow read, write: if true;
+      // Only staff can manage guest data
+      allow read, write: if isStaff();
     }
     
-    // ============================================
-    // SETTINGS - Read public, write open for now
-    // ============================================
+    // SETTINGS
     match /settings/{settingId} {
-      // Anyone can read settings (to get active season/menu)
+      // Public needs to read settings (e.g. if shop is closed)
       allow read: if true;
-      
-      // TODO: Add authentication to Management App
-      allow write: if true;
+      // Only Admin can change settings
+      allow write: if isAdmin();
     }
     
-    // ============================================
-    // HOUSEKEEPING REQUESTS - Open for now
-    // ============================================
+    // SECTIONS
+    match /sections/{sectionId} {
+      // Public needs to read available login sections
+      allow read: if true;
+      // Only Admin can manage sections
+      allow write: if isAdmin();
+    }
+    
+    // HOUSEKEEPING REQUESTS
     match /housekeeping_requests/{requestId} {
-      allow read, write: if true;
+      // Guests can create
+      allow create: if true;
+      // Staff can manage
+      allow read, update, delete: if isStaff();
     }
     
-    // ============================================
-    // DEFAULT DENY - Block all other collections
-    // ============================================
+    // DEFAULT DENY
     match /{document=**} {
       allow read, write: if false;
     }
