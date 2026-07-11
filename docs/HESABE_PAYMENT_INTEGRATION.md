@@ -58,10 +58,10 @@ This document explains the complete Hesabe payment gateway integration for the S
 ### Backend (`.env.local`)
 
 ```env
-HESABE_MERCHANT_ID=842217
-HESABE_ACCESS_CODE=c333729b-d060-4b74-a49d-7686a8353481
-HESABE_SECRET_KEY=PkW64zMe5NVdrlPVNnjo2Jy9nOb7v1Xg
-HESABE_IV_KEY=5NVdrlPVNnjo2Jy9
+HESABE_MERCHANT_ID=your_merchant_id
+HESABE_ACCESS_CODE=your_access_code
+HESABE_SECRET_KEY=your_secret_key
+HESABE_IV_KEY=your_iv_key
 HESABE_BASE_URL=https://sandbox.hesabe.com
 HESABE_PAYMENT_INITIATED_CHECKOUT_URL=https://sandbox.hesabe.com/checkout
 HESABE_PAYMENT_PAGE_REDIRECTION_URL=https://sandbox.hesabe.com/payment
