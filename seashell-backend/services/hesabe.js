@@ -4,7 +4,7 @@
  */
 
 const axios = require('axios');
-const { getEncryptedData, getDecryptedData } = require('../lib/hesabeEncryption');
+const { getEncryptedData, getDecryptedData, maskPII } = require('../lib/hesabeEncryption');
 
 class HesabeService {
     constructor() {
@@ -79,7 +79,7 @@ class HesabeService {
             requestData.webhookUrl = paymentData.webhookUrl;
         }
         
-        console.log('Creating checkout with data:', requestData);
+        console.log('Creating checkout with data:', maskPII(requestData));
         
         // Encrypt the request data using getEncryptedData as per documentation
         const encryptedData = getEncryptedData(requestData);
@@ -116,7 +116,7 @@ class HesabeService {
                 responseData = response.data;
             }
             
-            console.log('Checkout response:', JSON.stringify(responseData, null, 2));
+            console.log('Checkout response:', JSON.stringify(maskPII(responseData), null, 2));
             
             // Build the payment redirect URL
             if (responseData.status === true && responseData.response && responseData.response.data) {
@@ -174,11 +174,11 @@ class HesabeService {
             // Decrypt using getDecryptedData as per documentation
             const decryptedData = getDecryptedData(encryptedData);
             
-            console.log('Payment callback data:', JSON.stringify(decryptedData, null, 2));
+            console.log('Payment callback data:', JSON.stringify(maskPII(decryptedData), null, 2));
             
             // Extract the payment data - Hesabe returns data in response object directly (not response.data)
-            // Structure: { status: true, code: 1, message: "...", response: { resultCode, amount, ... } }
-            const responseData = decryptedData.response || decryptedData.data || decryptedData;
+            // Structure: { status: true, code: 1, message: "...", response: { data: { resultCode, amount, ... } } }
+            const responseData = (decryptedData.response && decryptedData.response.data) || decryptedData.response || decryptedData.data || decryptedData;
             
             // Check if payment was successful - multiple conditions to handle different response formats
             const isSuccess = (
@@ -190,7 +190,7 @@ class HesabeService {
                 (decryptedData.message && decryptedData.message.toLowerCase().includes('success'))
             );
             
-            console.log('Success detection:', {
+            console.log('Success detection:', maskPII({
                 resultCode: responseData.resultCode,
                 amount: responseData.amount,
                 paymentId: responseData.paymentId,
@@ -198,7 +198,7 @@ class HesabeService {
                 code: decryptedData.code,
                 message: decryptedData.message,
                 isSuccess: isSuccess
-            });
+            }));
             
             return {
                 success: isSuccess,
