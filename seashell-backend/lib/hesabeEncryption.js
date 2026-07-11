@@ -75,7 +75,61 @@ const getDecryptedData = (value) => {
     return null;
 };
 
+/**
+ * Utility to mask PII (Personally Identifiable Information) in logs
+ * @param {object} data - The data object to mask
+ * @returns {object} - A copy of the data with sensitive fields masked
+ */
+const maskPII = (data) => {
+    if (!data || typeof data !== 'object') return data;
+    
+    // Deep copy to avoid modifying the original data
+    let maskedData;
+    try {
+        maskedData = JSON.parse(JSON.stringify(data));
+    } catch (e) {
+        return '[Unserializable Data]';
+    }
+    
+    const maskValue = (val) => {
+        if (!val) return val;
+        const str = String(val);
+        if (str.length <= 4) return '****';
+        return str.substring(0, 4) + '****';
+    };
+
+    const processObject = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+
+        // Mask variable2 (Phone number)
+        if (obj.variable2) {
+            obj.variable2 = maskValue(obj.variable2);
+        }
+
+        // Mask customer details
+        if (obj.customer && typeof obj.customer === 'object') {
+            const sensitiveFields = ['Mobile', 'Email', 'Name', 'NameOnCard', 'CardNumber'];
+            sensitiveFields.forEach(field => {
+                if (obj.customer[field]) {
+                    obj.customer[field] = '****';
+                }
+            });
+        }
+
+        // Recurse through properties
+        Object.keys(obj).forEach(key => {
+            if (obj[key] && typeof obj[key] === 'object') {
+                processObject(obj[key]);
+            }
+        });
+    };
+
+    processObject(maskedData);
+    return maskedData;
+};
+
 module.exports = {
     getEncryptedData,
-    getDecryptedData
+    getDecryptedData,
+    maskPII
 };
