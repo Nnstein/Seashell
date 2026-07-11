@@ -6,11 +6,11 @@ import CategoryCarousel from '../components/CategoryCarousel';
 import MenuItemCard from '../components/MenuItemCard';
 import MenuItemModal from '../components/MenuItemModal';
 
-import { getMenuDataByType } from '../data';
+import { getMenuDataByType, CATEGORY_IMAGES, CATEGORY_NAMES } from '../data';
 import { MenuItem } from '../src/types';
 
 const MenuView: React.FC = () => {
-  const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu, categoryImages, searchQuery, setSearchQuery, activeMenu } = useApp();
+  const { activeCategory, setActiveCategory, language, addToCart, menuItems, loadingMenu, categoryImages, searchQuery, setSearchQuery, activeMenu, setActiveMenu, currentMenuCategories } = useApp();
   const [isSticky, setIsSticky] = React.useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const searchBarRef = React.useRef<HTMLDivElement>(null);
@@ -42,10 +42,13 @@ const MenuView: React.FC = () => {
 
   // Filter items by active category and search query
   const currentItems = useMemo(() => {
-    // If there's a search query, search across ALL categories
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       return menuItems.filter(item => {
+        // Ensure we only search within the active menu
+        const belongsToMenu = item.menu === activeMenu || (!item.menu && activeMenu === 'room-service');
+        if (!belongsToMenu) return false;
+
         const name = typeof item.name === 'object' ? item.name.en : item.name;
         const description = typeof item.description === 'object' ? item.description.en : item.description;
         const category = item.category;
@@ -58,9 +61,12 @@ const MenuView: React.FC = () => {
       });
     }
 
-    // If no search query, filter by active category only
-    return menuItems.filter(item => item.category === activeCategory);
-  }, [menuItems, activeCategory, searchQuery]);
+    // If no search query, filter by active menu AND active category
+    return menuItems.filter(item => 
+      (item.menu === activeMenu || (!item.menu && activeMenu === 'room-service')) && 
+      item.category === activeCategory
+    );
+  }, [menuItems, activeMenu, activeCategory, searchQuery]);
 
   // Get category details for theme/display
   // If CATEGORIES are not in data.ts, we might need to define them or fetch them
@@ -75,7 +81,7 @@ const MenuView: React.FC = () => {
     <div className="pb-20">
       <Hero
         activeCategoryName={currentCategoryName}
-        theme="light" // Default theme or derive from category
+        theme={{ textColor: 'text-white/90', accentColor: 'bg-gold' }}
         language={language}
       />
 
@@ -104,10 +110,10 @@ const MenuView: React.FC = () => {
 
       <section className="pb-2 px-2 sm:pb-4 sm:px-4 relative z-20">
         <CategoryCarousel
-          categories={getMenuDataByType(activeMenu).map(cat => ({
-            id: cat.id,
-            name: cat.name,
-            image: categoryImages[cat.id] || cat.image
+          categories={currentMenuCategories.map(catName => ({
+            id: catName,
+            name: CATEGORY_NAMES[catName] || { en: catName, ar: catName },
+            image: categoryImages[catName] || CATEGORY_IMAGES[catName] || '/assets/images/categories/main.jpg'
           }))}
           activeCategory={activeCategory}
           onSelectCategory={setActiveCategory}
@@ -125,6 +131,7 @@ const MenuView: React.FC = () => {
               onCardClick={setSelectedItem}
               theme="light"
               language={language}
+              activeMenu={activeMenu}
             />
           ))}
           {currentItems.length === 0 && (

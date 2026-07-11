@@ -5,7 +5,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { placeOrder } from '../services/firestoreService';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 // Error code to user-friendly message mapping
@@ -19,12 +20,12 @@ const getErrorMessage = (errorCode: string, fallbackMessage: string): { title: s
         },
         'DECLINED': {
             title: 'Card Declined',
-            message: 'Your card was declined. Please try a different card or payment method.',
+            message: 'Your card was declined. Please try another card or use the KNET option for local debit cards.\nتم رفض بطاقتك. يرجى تجربة بطاقة أخرى أو استخدام خيار KNET لبطاقات الخصم المحلية.',
             canRetry: true
         },
         'INSUFFICIENT_FUNDS': {
             title: 'Insufficient Funds',
-            message: 'Your card has insufficient funds. Please try a different card.',
+            message: 'Your card has insufficient funds. Please try a different card.\nبطاقتك ليس بها رصيد كافٍ. يرجى تجربة بطاقة مختلفة.',
             canRetry: true
         },
         'EXPIRED_CARD': {
@@ -39,12 +40,12 @@ const getErrorMessage = (errorCode: string, fallbackMessage: string): { title: s
         },
         'TIMEOUT': {
             title: 'Payment Timeout',
-            message: 'The payment session timed out. Please try again.',
+            message: 'The payment session timed out. Please try again.\nانتهت مهلة جلسة الدفع. يرجى المحاولة مرة أخرى.',
             canRetry: true
         },
         'PAYMENT_FAILED': {
             title: 'Payment Failed',
-            message: 'The payment could not be completed. Please try again.',
+            message: 'The payment could not be completed. Please try again.\nلم نتمكن من إتمام الدفع. يرجى المحاولة مرة أخرى.',
             canRetry: true
         },
         'DECRYPT_ERROR': {
@@ -84,13 +85,39 @@ const PaymentCallback = () => {
     useEffect(() => {
         const processPayment = async () => {
             try {
-                // Parse URL parameters to check for failure callback
                 const urlParams = new URLSearchParams(window.location.search);
+
+                // ── Indirect flow: Hesabe sends ?data=<encrypted> directly to the frontend ──
+                const hesabeData = urlParams.get('data');
+                if (hesabeData) {
+                    // Prevent re-verification if user refreshes the page
+                    if (sessionStorage.getItem('processed_payment') === hesabeData) {
+                        setStatus('success');
+                        return;
+                    }
+
+                    // Post the encrypted token to backend for server-side decryption & Firestore update
+                    const { verifyHesabePayment } = await import('../services/paymentService');
+                    const verifyResult = await verifyHesabePayment(hesabeData);
+
+                    if (verifyResult.success) {
+                        localStorage.removeItem('pending_order');
+                        sessionStorage.setItem('processed_payment', hesabeData);
+                        setStatus('success');
+                    } else {
+                        const resultCode = verifyResult.resultCode || 'PAYMENT_FAILED';
+                        setStatus('error');
+                        setErrorInfo(getErrorMessage(resultCode, verifyResult.message || verifyResult.error || ''));
+                    }
+                    return;
+                }
+
+                // ── Legacy flow: backend-redirect with ?success= and ?orderRef= params ──
                 const success = urlParams.get('success');
                 const error = urlParams.get('error');
                 const errorCode = urlParams.get('errorCode');
+                const orderRefFromUrl = urlParams.get('orderRef');
 
-                // Handle explicit failure from backend
                 if (success === 'false') {
                     const errorDetails = getErrorMessage(errorCode || 'PAYMENT_FAILED', error || '');
                     setStatus('error');
@@ -98,57 +125,59 @@ const PaymentCallback = () => {
                     return;
                 }
 
-                // Get the pending order from localStorage
-                const pendingOrderStr = localStorage.getItem('pending_order');
-                
-                if (!pendingOrderStr) {
-                    const errorDetails = getErrorMessage('NO_PENDING_ORDER', '');
+                // Resolve orderRef from URL or localStorage
+                let orderRef = orderRefFromUrl || '';
+                if (!orderRef) {
+                    const pendingOrderStr = localStorage.getItem('pending_order');
+                    if (pendingOrderStr) {
+                        try { orderRef = JSON.parse(pendingOrderStr).orderReference; }
+                        catch (e) { console.error('Failed to parse pending order from localStorage'); }
+                    }
+                }
+
+                if (!orderRef) {
                     setStatus('error');
-                    setErrorInfo(errorDetails);
+                    setErrorInfo(getErrorMessage('NO_PENDING_ORDER', ''));
                     return;
                 }
 
-                const pendingOrder = JSON.parse(pendingOrderStr);
+                // Poll Firestore for status (backend updates it via legacy /payment/success callback)
+                const checkStatus = async (attempts = 0): Promise<boolean> => {
+                    const docRef = doc(db, 'orders', orderRef);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const orderData = docSnap.data();
+                        if (['pending', 'preparing', 'ready', 'completed'].includes(orderData.status)) return true;
+                    }
+                    if (attempts < 5) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        return checkStatus(attempts + 1);
+                    }
+                    return false;
+                };
 
-                // Check if order is stale (more than 2 hours old)
-                const orderAge = Date.now() - (pendingOrder.timestamp || 0);
-                if (orderAge > 2 * 60 * 60 * 1000) { // 2 hours
+                const isVerified = await checkStatus();
+                if (isVerified) {
                     localStorage.removeItem('pending_order');
-                    const errorDetails = getErrorMessage('NO_PENDING_ORDER', '');
+                    setStatus('success');
+                } else {
+                    console.error('Payment verification failed for order:', orderRef);
                     setStatus('error');
-                    setErrorInfo(errorDetails);
-                    return;
+                    setErrorInfo({
+                        title: 'Verification Failed',
+                        message: 'We could not verify your payment. If you were charged, please contact reception.',
+                        canRetry: true
+                    });
                 }
-
-                // Place the order in Firestore/Firebase
-                await placeOrder({
-                    roomNumber: pendingOrder.roomNumber,
-                    phoneNumber: pendingOrder.phoneNumber,
-                    guestName: pendingOrder.guestName,
-                    totalAmount: pendingOrder.totalAmount,
-                    paymentMethod: 'card',
-                    items: pendingOrder.items,
-                    menu: pendingOrder.menu,
-                    ...(pendingOrder.chairNumber ? { chairNumber: pendingOrder.chairNumber } : {})
-                });
-
-                // Clear the pending order only on success
-                localStorage.removeItem('pending_order');
-
-                // Set success status
-                setStatus('success');
 
             } catch (error) {
                 console.error('Payment processing error:', error);
-                const errorDetails = getErrorMessage('FIREBASE_ERROR', '');
                 setStatus('error');
-                setErrorInfo(errorDetails);
-                // Keep the pending order in localStorage for retry
+                setErrorInfo(getErrorMessage('FIREBASE_ERROR', ''));
             }
         };
 
-        // Small delay to ensure smooth UI transition
-        setTimeout(processPayment, 500);
+        processPayment();
     }, []);
 
     const handleRetry = () => {

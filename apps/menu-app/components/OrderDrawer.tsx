@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Home, Loader2, Clock } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ClipboardList, Loader2, Clock } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
 import { CartItem } from '../context/AppContext';
@@ -31,7 +31,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
   const total = cart.reduce((sum, item) => sum + (item.effectiveTotal ?? item.price * item.quantity), 0);
   const totalSavings = cart.reduce((sum, item) => sum + (item.savings ?? 0), 0);
   const isRTL = language === 'ar';
-  const [paymentMethod, setPaymentMethod] = React.useState<'room_charge' | 'card'>('room_charge');
+
   const [estimatedPrepTime, setEstimatedPrepTime] = React.useState<number>(30);
   const [loadingPrepTime, setLoadingPrepTime] = React.useState(false);
 
@@ -70,6 +70,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
   };
 
   const getImage = (item: CartItem) => {
+    if (item.images && item.images.length > 0) return item.images[0];
     return item.imageUrl || item.image || `https://source.unsplash.com/featured/?food,${item.category}`;
   };
 
@@ -88,6 +89,20 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="h-full flex flex-col relative overflow-hidden">
+          {/* Loading Overlay */}
+          {isPlacingOrder && (
+            <div className="absolute inset-0 z-[100] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+              <div className="w-20 h-20 bg-stone-900 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-stone-900/30">
+                <Loader2 className="animate-spin text-gold" size={40} />
+              </div>
+              <h3 className="font-serif text-2xl font-bold text-stone-900 mb-2 text-center">
+                {language === 'ar' ? 'جاري تأمين الدفع...' : 'Securing Payment...'}
+              </h3>
+              <p className="text-stone-500 font-medium max-w-[280px] text-center text-sm">
+                {language === 'ar' ? 'يرجى الانتظار بينما نقوم بتجهيز بوابة الدفع الآمنة.' : 'Please wait while we prepare your secure payment gateway.'}
+              </p>
+            </div>
+          )}
           {/* Header */}
           <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-stone-200 bg-white/50 relative z-20 flex justify-between items-center">
             <div className="min-w-0 flex-1">
@@ -137,7 +152,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                         <h3 className="font-serif text-lg font-bold text-stone-800 leading-tight">{getName(item)}</h3>
                         <div className={`${isRTL ? 'mr-2' : 'ml-2'} text-right`}>
                           {/* Show savings if bundle/discount applied */}
-                          {item.savings && item.savings > 0.01 && (
+                          {item.savings != null && item.savings > 0.01 && (
                             <span className="text-xs text-stone-400 line-through block">
                               {(item.originalTotal ?? item.price * item.quantity).toFixed(3)}
                             </span>
@@ -162,7 +177,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                               🏷️ Discounted
                             </span>
                           )}
-                          {item.savings && item.savings > 0.01 && (
+                          {item.savings != null && item.savings > 0.01 && (
                             <span className="bg-green-100 text-green-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                               -{item.savings.toFixed(3)} KD
                             </span>
@@ -269,86 +284,61 @@ const OrderDrawer: React.FC<OrderDrawerProps> = () => {
                 </div>
               </div>
 
-              {/* Payment Method Selection */}
-              <div className="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
-                <p className="text-[10px] sm:text-xs uppercase tracking-widest text-stone-500 mb-2">Payment Method</p>
-                <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                  <label className={`relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'room_charge' ? 'border-gold bg-gold/10 text-stone-900 shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-gold/50 hover:bg-white'}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="room_charge"
-                      checked={paymentMethod === 'room_charge'}
-                      onChange={() => setPaymentMethod('room_charge')}
-                      className="hidden"
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-br from-gold/20 to-transparent opacity-0 transition-opacity duration-500 ${paymentMethod === 'room_charge' ? 'opacity-100' : ''}`} />
-                    <Home size={24} className={`sm:w-7 sm:h-7 mb-1 sm:mb-2 z-10 transition-transform duration-300 ${paymentMethod === 'room_charge' ? 'scale-110 text-gold' : 'group-hover:scale-110'}`} />
-                    <span className="font-serif font-bold text-xs sm:text-sm z-10">Room Charge</span>
-                    <span className="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-60 z-10">Bill to Room</span>
-                  </label>
 
-                  <label className={`relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 cursor-pointer transition-all duration-300 group overflow-hidden ${paymentMethod === 'card' ? 'border-stone-800 bg-stone-800 text-white shadow-md' : 'border-stone-100 bg-stone-50 text-stone-400 hover:border-stone-800/50 hover:bg-white'}`}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={() => setPaymentMethod('card')}
-                      className="hidden"
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 transition-opacity duration-500 ${paymentMethod === 'card' ? 'opacity-100' : ''}`} />
-                    <div className="mb-1 sm:mb-2 z-10">
-                      {/* Custom Card Icon or Lucide */}
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`sm:w-7 sm:h-7 transition-transform duration-300 ${paymentMethod === 'card' ? 'scale-110' : 'group-hover:scale-110'}`}><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+
+              <div className="space-y-3 sm:space-y-4">
+                {/* Indirect Payment Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isPlacingOrder) handleCheckout(0); // 0 = Indirect (All methods on Hesabe's page)
+                  }}
+                  disabled={isPlacingOrder}
+                  className={`w-full relative overflow-hidden bg-stone-900 text-white font-bold py-4 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-between px-6 group ${
+                    isPlacingOrder ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isPlacingOrder ? (
+                    <div className="flex items-center justify-center w-full gap-3 py-2">
+                      <Loader2 className="animate-spin text-gold" size={24} />
+                      <div className="text-center">
+                        <span className="block text-sm font-bold tracking-wide uppercase text-gold">
+                          {language === 'ar' ? 'جاري التحويل...' : 'Redirecting...'}
+                        </span>
+                        <span className="block text-[10px] opacity-80 font-medium italic text-stone-300">
+                          {language === 'ar' ? 'يرجى الانتظار لتأمين الدفع' : 'Securing payment gateway'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-serif font-bold text-xs sm:text-sm z-10">Pay with Card</span>
-                    <span className="text-[8px] sm:text-[10px] uppercase tracking-wider opacity-60 z-10">Credit / Debit</span>
-                  </label>
-                </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/10 p-2 rounded-lg group-hover:bg-gold/20 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+                        </div>
+                        <div className="text-left">
+                          <span className="block text-sm font-bold tracking-wide uppercase group-hover:text-gold transition-colors">
+                            {language === 'ar' ? 'الدفع الآمن' : 'Pay Securely'}
+                          </span>
+                          <span className="block text-[10px] opacity-60 font-medium italic">
+                            {language === 'ar' ? 'كي نت، فيزا، ماستركارد' : 'KNET, Visa, Mastercard'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                         {isRTL ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+                      </div>
+                    </>
+                  )}
+                </button>
+                
+                <p className="text-[9px] text-center text-stone-400 mt-2 italic">
+                  {language === 'ar' 
+                    ? 'سيتم توجيهك إلى بوابة الدفع الآمنة' 
+                    : 'You will be redirected to a secure payment gateway'}
+                </p>
               </div>
-
-
-
-              {/* ... inside component ... */}
-
-              {/* Beach Guest: Chair Number Input */}
-              {isBeachGuest && (
-                <div className="mb-6 space-y-2 animate-fade-in">
-                  <label className="text-xs uppercase tracking-widest text-stone-500">
-                    {language === 'ar' ? 'رقم الكرسي / الطاولة' : 'Chair / Table Number'} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={chairNumber}
-                    onChange={(e) => setChairNumber(e.target.value.toUpperCase())}
-                    placeholder={language === 'ar' ? 'مثال: C12' : 'e.g. C12'}
-                    className="w-full p-4 bg-stone-50 border-2 border-stone-200 rounded-xl focus:border-gold focus:ring-0 outline-none font-mono text-lg font-bold text-stone-900 placeholder:text-stone-300 transition-colors"
-                  />
-                  <p className="text-[10px] text-stone-400">
-                    {language === 'ar' ? 'يرجى إدخال الرقم الموجود على الكرسي أو الطاولة.' : 'Please enter the number tag found on your chair or table.'}
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!isPlacingOrder) handleCheckout(paymentMethod);
-                }}
-                disabled={isPlacingOrder || (isBeachGuest && !chairNumber)}
-                className={`w-full bg-stone-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg hover:bg-gold hover:text-white hover:shadow-gold/20 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 ${isPlacingOrder || (isBeachGuest && !chairNumber) ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                {isPlacingOrder ? (
-                  <Loader2 className="animate-spin" size={24} />
-                ) : (
-                  <>
-                    {UI_TEXT.placeOrder[language]} {isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-                  </>
-                )}
-              </button>
             </div>
           )}
         </div>

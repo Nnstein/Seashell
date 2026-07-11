@@ -2,6 +2,7 @@ import { CategoryData } from './src/types';
 import {
   ROOM_SERVICE_CATEGORIES,
   PRESTO_CATEGORIES,
+  SEASHELL_CATEGORIES,
   CATEGORY_NAMES,
   CATEGORY_IMAGES,
   CATEGORY_THEMES,
@@ -10,10 +11,12 @@ import {
 
 // Asset Paths
 const ASSETS = {
-  landing: '/assets/landing/landing.jpg',
+  landing: '/assets/landing/room-service-bg.jpg',
+  beachLanding: '/assets/landing/beach-bg.png',
 };
 
 export const LANDING_IMAGE = ASSETS.landing;
+export const BEACH_LANDING_IMAGE = ASSETS.beachLanding;
 
 export const UI_TEXT = {
   viewMenu: { en: "View Menu", ar: "قائمة الطعام" },
@@ -59,12 +62,16 @@ export const ROOM_SERVICE_MENU_DATA: CategoryData[] = ROOM_SERVICE_CATEGORIES.ma
 // Generate MENU_DATA for Presto
 export const PRESTO_MENU_DATA: CategoryData[] = PRESTO_CATEGORIES.map(buildCategoryData);
 
+// Generate MENU_DATA for Seashell
+export const SEASHELL_MENU_DATA: CategoryData[] = SEASHELL_CATEGORIES.map(buildCategoryData);
+
 // Default export - Room Service (since that's the primary use case now)
 // The app should use getMenuDataByType for dynamic menu switching
 export const MENU_DATA = ROOM_SERVICE_MENU_DATA;
 
 // Helper to get menu data by type
-export const getMenuDataByType = (menuType: 'presto' | 'room-service'): CategoryData[] => {
+export const getMenuDataByType = (menuType: 'presto' | 'room-service' | 'seashell'): CategoryData[] => {
+  if (menuType === 'seashell') return SEASHELL_MENU_DATA;
   return menuType === 'room-service' ? ROOM_SERVICE_MENU_DATA : PRESTO_MENU_DATA;
 };
 

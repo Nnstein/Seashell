@@ -6,35 +6,45 @@ import Layout from './components/Layout';
 import LandingPage from './components/LandingPage';
 import ConfirmationScreen from './components/ConfirmationScreen';
 import MenuView from './views/MenuView';
+import OrderHistoryView from './views/OrderHistoryView';
 import PaymentCallback from './components/PaymentCallback';
 import { Clock } from 'lucide-react';
 
 function App() {
-  const { view, language } = useApp();
+  const { view, language, activeMenu, roomNumber, menuSettings } = useApp();
   const [menuIsOpen, setMenuIsOpen] = useState(true);
   const [closeMessage, setCloseMessage] = useState(''); 
   const [checkingMenuStatus, setCheckingMenuStatus] = useState(true);
 
-  // Check menu status periodically
+  // Sync menu status from real-time AppContext
   useEffect(() => {
-    const checkMenuStatus = async () => {
-      const settings = await getMenuSettings();
-      if (settings) {
-        setMenuIsOpen(settings.menuOpen ?? true);
-        setCloseMessage(settings.closeMessage || '');
+    if (menuSettings) {
+      // Support both new independent status and legacy global status
+      const currentMenuStatus = menuSettings.menuStatus?.[activeMenu];
+      
+      if (currentMenuStatus) {
+          setMenuIsOpen(currentMenuStatus.isOpen);
+          setCloseMessage(currentMenuStatus.closeMessage || '');
+      } else {
+          // Fallback to legacy
+          setMenuIsOpen(menuSettings.menuOpen ?? true);
+          setCloseMessage(menuSettings.closeMessage || '');
       }
       setCheckingMenuStatus(false);
-    };
+    }
+  }, [menuSettings, activeMenu]);
 
-    checkMenuStatus();
-    
-    // Recheck every 30 seconds
-    const interval = setInterval(checkMenuStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const normalizedPathname = window.location.pathname.replace(/\/+/g, '/');
+  const isBeachMode = normalizedPathname.startsWith('/beach');
+  const isHome = normalizedPathname === '/' || normalizedPathname === '/beach';
+  const isPaymentCallback = normalizedPathname === '/payment-callback';
 
-  // Check if we're on the payment callback URL
-  const isPaymentCallback = window.location.pathname === '/payment-callback';
+  // --- STRICT ROUTING LOGIC ---
+  // 1. If the path is not one of our official routes, it's invalid.
+  const isValidRoute = isHome || isPaymentCallback;
+  
+  // 2. We only show the MENU if the route is valid AND we have a room number
+  const effectiveView = (isValidRoute && roomNumber) ? view : 'HOME';
 
   // If on payment callback, render it directly without Layout
   if (isPaymentCallback) {
@@ -53,9 +63,9 @@ function App() {
   }
 
   let content;
-  switch (view) {
+  switch (effectiveView) {
     case 'HOME':
-      content = <LandingPage />;
+      content = <LandingPage isBeachMode={isBeachMode} />;
       break;
     case 'MENU':
       content = <MenuView />;
@@ -63,8 +73,11 @@ function App() {
     case 'CONFIRMATION':
       content = <ConfirmationScreen />;
       break;
+    case 'ORDER_HISTORY':
+      content = <OrderHistoryView />;
+      break;
     default:
-      content = <LandingPage />;
+      content = <LandingPage isBeachMode={isBeachMode} />;
   }
 
   const isRTL = language === 'ar';
@@ -94,7 +107,7 @@ function App() {
                 </div>
                 
                 {/* Heading - Bilingual */}
-                <h2 className="font-serif text-3xl md:text-4xl font-bold text-stone-800 mb-4 text-center">
+                <h2 className="font-serif text-3xl md:text-4xl font-bold text-stone-800 mb-2 text-center">
                   {language === 'ar' ? 'مغلق مؤقتاً' : 'Temporarily Closed'}
                 </h2>
                 

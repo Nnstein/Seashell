@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { MENU_DATA, LANDING_IMAGE } from '../data';
+import { MENU_DATA, LANDING_IMAGE, BEACH_LANDING_IMAGE } from '../data';
 
 interface BackgroundMedia {
   type: 'video' | 'image';
@@ -9,11 +9,14 @@ interface BackgroundMedia {
 
 const BackgroundController: React.FC = () => {
   const { view, activeCategory, categoryImages } = useApp();
+  
+  // Detect beach mode from path
+  const isBeachMode = window.location.pathname.replace(/\/+/g, '/').startsWith('/beach');
 
   // Calculate target media
   const targetMedia: BackgroundMedia = useMemo(() => {
     if (view === 'HOME') {
-      return { type: 'image', src: LANDING_IMAGE };
+      return { type: 'image', src: isBeachMode ? BEACH_LANDING_IMAGE : LANDING_IMAGE };
     }
     const cat = MENU_DATA.find(c => c.id === activeCategory) || MENU_DATA[0];
 
@@ -21,7 +24,7 @@ const BackgroundController: React.FC = () => {
     const imageSrc = categoryImages[cat.id] || cat.image;
 
     return { type: 'image', src: imageSrc };
-  }, [view, activeCategory, categoryImages]);
+  }, [view, activeCategory, categoryImages, isBeachMode]);
 
   // Two layers for cross-fading
   const [layers, setLayers] = useState<BackgroundMedia[]>([targetMedia, targetMedia]);

@@ -71,7 +71,7 @@ const ConfirmationScreen: React.FC = () => {
                     </h4>
                     {/* Price display with discount/bundle */}
                     <div className="text-right">
-                      {item.savings && item.savings > 0.01 ? (
+                      {item.savings != null && item.savings > 0.01 ? (
                         <>
                           <span className="text-xs text-stone-400 line-through block">
                             {(item.originalTotal ?? item.price * item.quantity).toFixed(3)}
@@ -103,7 +103,7 @@ const ConfirmationScreen: React.FC = () => {
                         🏷️ Discounted
                       </span>
                     )}
-                    {item.savings && item.savings > 0.01 && (
+                    {item.savings != null && item.savings > 0.01 && (
                       <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
                         -{item.savings.toFixed(3)} KD
                       </span>

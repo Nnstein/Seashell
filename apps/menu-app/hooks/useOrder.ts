@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import { placeOrder } from '../services/firestoreService';
-import { createHesabeCheckout } from '../services/paymentService';
+import { createHesabeCheckout, testBackendConnection } from '../services/paymentService';
 import { CartItem } from './useCart';
 import { ViewState } from '../src/types';
 
@@ -11,7 +10,7 @@ interface UseOrderProps {
     phoneNumber: string;
     chairNumber: string;
     isBeachGuest: boolean;
-    activeMenu: 'presto' | 'room-service';
+    activeMenu: 'presto' | 'room-service' | 'seashell';
     setView: (view: ViewState) => void;
     setIsCartOpen: (isOpen: boolean) => void;
     // Toast callbacks (optional for backward compatibility)
@@ -36,7 +35,6 @@ export const useOrder = ({
 }: UseOrderProps) => {
     const [confirmedOrder, setConfirmedOrder] = useState<CartItem[]>([]);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-    const [expectedPreparationTime, setExpectedPreparationTime] = useState<number>(30);
 
     // Helper to show messages (uses toast if available, falls back to alert)
     const notify = useCallback((message: string, type: 'error' | 'warning' | 'info' = 'info') => {
@@ -52,157 +50,113 @@ export const useOrder = ({
         }
     }, [showError, showWarning, showInfo]);
 
-    const handleCheckout = useCallback(async (paymentMethod: 'room_charge' | 'card') => {
+    const handleCheckout = useCallback(async (paymentType: number = 0) => {
         if (cart.length === 0) return;
 
         // Validate required fields
         if (!roomNumber) {
-            notify("Please enter your room number.", 'warning');
+            notify("Please enter your room number.\nيرجى إدخال رقم غرفتك.", 'warning');
             return;
         }
 
         if (!phoneNumber) {
-            notify("Please enter your phone number.", 'warning');
+            notify("Please enter your phone number.\nيرجى إدخال رقم هاتفك.", 'warning');
             return;
         }
 
-        if (isBeachGuest && !chairNumber) {
-            notify("Please enter your Chair/Table Number.", 'warning');
-            return;
-        }
+
 
         if (isPlacingOrder) return;
 
         setIsPlacingOrder(true);
 
         try {
-            // Calculate total using effective totals (includes discounts/bundles)
+            notify("Connecting to secure payment server...\nجاري الاتصال بخادم الدفع الآمن...", 'info');
+            const isBackendAlive = await testBackendConnection();
+            if (!isBackendAlive) {
+                throw new Error("Secure payment server is temporarily busy. Please wait a moment and try again.\nخادم الدفع الآمن مشغول مؤقتًا. يرجى الانتظار لحظة والمحاولة مرة أخرى.");
+            }
+
+            // NOTE: amount is calculated server-side now for security.
+            // We just pass it here for the UI/Redirect logic if needed.
             const totalAmount = cart.reduce((sum, item) =>
                 sum + (item.effectiveTotal ?? item.price * item.quantity), 0
             );
 
-            // Handle card payment through Hesabe
-            if (paymentMethod === 'card') {
-                const orderRef = `ORDER-${Date.now()}`;
-                
-                notify("Redirecting to payment gateway...", 'info');
-                
-                // Create Hesabe checkout
-                const checkoutResult = await createHesabeCheckout({
-                    amount: totalAmount,
-                    orderReferenceNumber: orderRef,
-                    variable1: roomNumber,
-                    variable2: phoneNumber,
-                    variable3: 'Guest',
-                    variable4: isBeachGuest ? chairNumber : '',
-                    variable5: activeMenu,
-                });
+            // Handle card payment through Hesabe (The ONLY accepted method)
+            const orderRef = `ORDER-${Date.now()}`;
+            
+            notify("Redirecting to payment gateway...\nجاري إعادة التوجيه إلى بوابة الدفع...", 'info');
+            
+            // Map items with full info for server-side verification and management display
+            const orderItems = cart.map(item => ({
+                itemId: item.id || 'unknown',
+                name: item.name,
+                price: item.price,
+                unitPrice: item.unitPrice ?? item.price,
+                effectiveTotal: item.effectiveTotal,
+                quantity: item.quantity,
+                notes: item.specialInstructions || '',
+                ...(item.hasBundlePricing ? { hasBundlePricing: item.hasBundlePricing } : {}),
+                ...(item.appliedBundle ? { appliedBundle: item.appliedBundle } : {}),
+                // Include selection info for price verification
+                ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
+                ...(item.selectedAddons ? { selectedAddons: item.selectedAddons } : {})
+            }));
 
-                if (!checkoutResult.success || !checkoutResult.redirectUrl) {
-                    throw new Error(checkoutResult.error || 'Failed to create payment checkout');
-                }
-
-                // Save order data to localStorage (to complete after payment)
-                // Include full pricing info for each item
-                const orderItems = cart.map(item => {
-                    const orderItem: Record<string, any> = {
-                        itemId: item.id || 'unknown',
-                        name: item.name,
-                        price: item.price,
-                        quantity: item.quantity,
-                        notes: item.specialInstructions || '',
-                        unitPrice: item.unitPrice ?? item.price,
-                        effectiveTotal: item.effectiveTotal ?? (item.price * item.quantity),
-                        originalTotal: item.originalTotal ?? (item.price * item.quantity),
-                        savings: item.savings ?? 0,
-                        hasDiscount: item.hasDiscount ?? false,
-                        hasBundlePricing: item.hasBundlePricing ?? false
-                    };
-
-                    if (item.appliedBundle) orderItem.appliedBundle = item.appliedBundle;
-                    if (item.selectedSize) orderItem.selectedSize = item.selectedSize;
-                    if (item.selectedAddons && item.selectedAddons.length > 0) orderItem.selectedAddons = item.selectedAddons;
-                    if (item.specialInstructions) orderItem.specialInstructions = item.specialInstructions;
-
-                    return orderItem;
-                });
-
-                localStorage.setItem('pending_order', JSON.stringify({
-                    orderReference: orderRef,
-                    roomNumber,
-                    phoneNumber,
-                    guestName: 'Guest',
-                    totalAmount,
-                    paymentMethod: 'card',
-                    items: orderItems,
-                    menu: activeMenu,
-                    ...(isBeachGuest && chairNumber ? { chairNumber } : {}),
-                    cart: cart, // For confirmation page
-                    timestamp: Date.now()
-                }));
-
-                // Redirect to Hesabe payment page
-                window.location.href = checkoutResult.redirectUrl;
-                return;
-            }
-
-            // Handle room charge (existing logic)
-            // Include full pricing info for each item
-            const orderItems = cart.map(item => {
-                const orderItem: Record<string, any> = {
-                    itemId: item.id || 'unknown',
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    notes: item.specialInstructions || '',
-                    // Include pricing details for discounts/bundles
-                    unitPrice: item.unitPrice ?? item.price,
-                    effectiveTotal: item.effectiveTotal ?? (item.price * item.quantity),
-                    originalTotal: item.originalTotal ?? (item.price * item.quantity),
-                    savings: item.savings ?? 0,
-                    hasDiscount: item.hasDiscount ?? false,
-                    hasBundlePricing: item.hasBundlePricing ?? false
-                };
-
-                // Only add optional fields if they have values (Firestore rejects undefined)
-                if (item.appliedBundle) {
-                    orderItem.appliedBundle = item.appliedBundle;
-                }
-                if (item.selectedSize) {
-                    orderItem.selectedSize = item.selectedSize;
-                }
-                if (item.selectedAddons && item.selectedAddons.length > 0) {
-                    orderItem.selectedAddons = item.selectedAddons;
-                }
-                if (item.specialInstructions) {
-                    orderItem.specialInstructions = item.specialInstructions;
-                }
-
-                return orderItem;
+            // Create Hesabe checkout AND Firestore Order (Secure Handshake)
+            const checkoutResult = await createHesabeCheckout({
+                orderReferenceNumber: orderRef,
+                variable1: roomNumber,
+                variable2: phoneNumber,
+                variable3: 'Guest',
+                variable4: isBeachGuest ? chairNumber : '',
+                variable5: activeMenu,
+                items: orderItems,
+                paymentType: paymentType
             });
 
-            const orderResult = await placeOrder({
+            if (!checkoutResult.success || !checkoutResult.redirectUrl) {
+                if (checkoutResult.error === 'MENU_CLOSED') {
+                    throw new Error(`MENU_CLOSED:${checkoutResult.message}`);
+                }
+                throw new Error(checkoutResult.error || 'Failed to create payment checkout');
+            }
+
+            // Save snapshot to localStorage for post-payment recovery/display
+            localStorage.setItem('pending_order', JSON.stringify({
+                orderReference: orderRef,
                 roomNumber,
                 phoneNumber,
                 guestName: 'Guest',
                 totalAmount,
-                paymentMethod: 'room-charge', // Convert to expected format
-                items: orderItems as any,
+                paymentMethod: 'card',
+                items: orderItems,
                 menu: activeMenu,
-                ...(isBeachGuest && chairNumber ? { chairNumber } : {})
-            });
+                ...(isBeachGuest && chairNumber ? { chairNumber } : {}),
+                cart: cart, // For confirmation page display
+                timestamp: Date.now()
+            }));
 
-            // Store the expected preparation time
-            setExpectedPreparationTime(orderResult.expectedPreparationTime);
-
-            setConfirmedOrder([...cart]);
-            setView('CONFIRMATION');
-            setIsCartOpen(false);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            clearCart();
+            // Redirect to Hesabe payment page
+            window.location.href = checkoutResult.redirectUrl;
+            return;
         } catch (error: unknown) {
             console.error("Error placing order: ", error);
-            notify("Unable to place your order. Please try again or contact reception.", 'error');
+            const errorMsg = error instanceof Error ? error.message : '';
+            if (errorMsg.startsWith('MENU_CLOSED:')) {
+                const message = errorMsg.replace('MENU_CLOSED:', '').trim();
+                notify(message, 'warning');
+            } else if (errorMsg.startsWith('TIME_CONSTRAINT:')) {
+                const message = errorMsg.replace('TIME_CONSTRAINT:', '').trim();
+                notify(`${message}\nPlease remove this item from your cart to proceed.\nيرجى إزالة هذا العنصر من سلة التسوق للمتابعة.`, 'error');
+            } else if (errorMsg.startsWith('ITEM_UNAVAILABLE:')) {
+                // A menu item was removed between cart-add and checkout
+                const itemName = errorMsg.replace('ITEM_UNAVAILABLE:', '').trim();
+                notify(`Item ${itemName} is no longer available and has been removed from your cart. Please select an alternative.\nالعنصر ${itemName} لم يعد متاحًا وتمت إزالته من سلة التسوق الخاصة بك. يرجى اختيار بديل.`, 'error');
+            } else {
+                notify("Unable to place your order. Please try again or call reception.\nتعذر إتمام طلبك. يرجى المحاولة مرة أخرى أو الاتصال بمكتب الاستقبال.", 'error');
+            }
         } finally {
             setIsPlacingOrder(false);
         }
@@ -218,7 +172,6 @@ export const useOrder = ({
         confirmedOrder,
         isPlacingOrder,
         handleCheckout,
-        resetOrder,
-        expectedPreparationTime
+        resetOrder
     };
 };

@@ -15,7 +15,7 @@ export const useSession = () => {
     const [chairNumber, setChairNumber] = useState('');
     const [sessionLoaded, setSessionLoaded] = useState(false);
 
-    const isBeachGuest = roomNumber.toUpperCase().startsWith('B');
+    const isBeachGuest = roomNumber.toUpperCase().startsWith('SB');
 
     // Save session to localStorage
     const saveSession = useCallback((room: string, phone: string) => {
@@ -55,12 +55,24 @@ export const useSession = () => {
         setChairNumber('');
     }, []);
 
-    // Auto-restore session on mount
+    // Auto-restore session on mount — but only if the session type matches the current route.
+    // A beach session (SB prefix) is only valid on /beach.
+    // A room/presto session is only valid on /.
+    // Mismatches are cleared so the correct login page is shown.
     useEffect(() => {
         const session = loadSession();
         if (session) {
-            setRoomNumber(session.roomNumber);
-            setPhoneNumber(session.phoneNumber);
+            const isBeachPath = window.location.pathname.replace(/\/+/g, '/').startsWith('/beach');
+            const isBeachSession = session.roomNumber.toUpperCase().startsWith('SB');
+
+            if (isBeachPath === isBeachSession) {
+                // Session type matches the route — restore it
+                setRoomNumber(session.roomNumber);
+                setPhoneNumber(session.phoneNumber);
+            } else {
+                // Mismatch: clear the stale session so the login page appears
+                localStorage.removeItem(SESSION_KEY);
+            }
         }
         setSessionLoaded(true);
     }, [loadSession]);

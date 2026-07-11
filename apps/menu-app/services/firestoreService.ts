@@ -1,39 +1,73 @@
 import { db } from '../firebase';
-import { collection, getDocs, addDoc, query, where, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { MenuItem, Order, MenuSettings } from '../src/types';
-import { getCachedData, setCachedData, CACHE_KEYS, CACHE_TTL } from '@seashell/config/cacheUtils';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { MenuItem, MenuSettings, LocationSection } from '../src/types';
+import { getCachedData, setCachedData, invalidateCache, CACHE_KEYS, CACHE_TTL } from '@seashell/config/cacheUtils';
 
 // Collection References
 const MENU_COLLECTION = 'menu_items';
-const ORDERS_COLLECTION = 'orders';
 const SETTINGS_COLLECTION = 'settings';
 const GLOBAL_SETTINGS_ID = 'global_settings';
+const SECTIONS_COLLECTION = 'sections';
+
+// --- Sections ---
+
+export const getSections = async (): Promise<LocationSection[]> => {
+    try {
+        const querySnapshot = await getDocs(collection(db, SECTIONS_COLLECTION));
+        return querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as LocationSection));
+    } catch (error) {
+        console.error("Error fetching sections: ", error);
+        return [];
+    }
+};
 
 // --- Menu Items ---
 
 /**
- * Get available menu items with smart caching
- * - First checks localStorage cache (24hr TTL)
- * - Only fetches from Firestore if cache miss/expired
- * - Dramatically reduces reads: ~50 reads → ~2 reads per day
+ * Get available menu items with smart caching and version-based cache busting
+ * - Checks global settings for the last update timestamp
+ * - If Firestore has a newer update than local cache, it refreshes the menu
+ * - Otherwise, uses local cache to save 50+ reads per user
  */
 export const getAvailableMenuItems = async (): Promise<MenuItem[]> => {
-    // Try cache first
-    const cached = getCachedData<MenuItem[]>(CACHE_KEYS.MENU_ITEMS, CACHE_TTL.MENU_ITEMS);
-    if (cached) {
-        return cached;
-    }
+    try {
+        // 1. Fetch current settings from Firestore (1 read)
+        // We bypass the cache for settings here to get the latest version tag
+        const settingsRef = doc(db, SETTINGS_COLLECTION, GLOBAL_SETTINGS_ID);
+        const settingsSnap = await getDoc(settingsRef);
+        const firestoreSettings = settingsSnap.exists() ? settingsSnap.data() as MenuSettings : null;
+        
+        const firestoreVersion = firestoreSettings?.lastMenuUpdate || 0;
 
-    // Cache miss - fetch from Firestore
-    console.log('🔄 Fetching menu items from Firestore...');
-    const q = query(collection(db, MENU_COLLECTION), where('isAvailable', '==', true));
-    const querySnapshot = await getDocs(q);
-    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-    
-    // Cache the results
-    setCachedData(CACHE_KEYS.MENU_ITEMS, items);
-    
-    return items;
+        // 2. Check local cache
+        const cachedItems = getCachedData<MenuItem[]>(CACHE_KEYS.MENU_ITEMS, CACHE_TTL.MENU_ITEMS);
+        const cachedSettings = getCachedData<MenuSettings>(CACHE_KEYS.SETTINGS, CACHE_TTL.SETTINGS);
+        const cachedVersion = cachedSettings?.lastMenuUpdate || 0;
+
+        // 3. Decision: Use cache only if versions match and cache exists
+        if (cachedItems && firestoreVersion === cachedVersion) {
+            console.log('✅ Cache Hit (Version Match): Using local menu data.');
+            return cachedItems;
+        }
+
+        // 4. Cache Miss / Version Mismatch - Fetch from Firestore
+        console.log(`🔄 Cache Busted (V:${firestoreVersion} vs local:${cachedVersion}). Fetching fresh menu...`);
+        const q = query(collection(db, MENU_COLLECTION), where('isAvailable', '==', true));
+        const querySnapshot = await getDocs(q);
+        const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+        
+        // 5. Update local cache with new items AND new version tag
+        setCachedData(CACHE_KEYS.MENU_ITEMS, items);
+        if (firestoreSettings) {
+            setCachedData(CACHE_KEYS.SETTINGS, firestoreSettings);
+        }
+        
+        return items;
+    } catch (error) {
+        console.error("Error in versioned menu fetch:", error);
+        // Fail-safe: try to return whatever is in cache
+        return getCachedData<MenuItem[]>(CACHE_KEYS.MENU_ITEMS, CACHE_TTL.MENU_ITEMS) || [];
+    }
 };
 
 /**
@@ -86,6 +120,51 @@ export const getMenuSettings = async (): Promise<MenuSettings | null> => {
     }
 };
 
+// --- Real-time Menu Update Subscription ---
+
+/**
+ * Subscribe to menu update notifications via the settings document.
+ * Listens to ONLY settings/global_settings (1 doc). Firestore bills snapshot
+ * listeners only when the document changes, making this extremely cost-effective.
+ * 
+ * When lastMenuUpdate changes, cache is invalidated and onUpdate callback fires.
+ */
+export const subscribeToMenuUpdates = (
+    onUpdate: () => void,
+    onError?: (error: Error) => void
+): Unsubscribe => {
+    const settingsRef = doc(db, SETTINGS_COLLECTION, GLOBAL_SETTINGS_ID);
+    let lastKnownVersion: number | null = null;
+
+    return onSnapshot(
+        settingsRef,
+        (snapshot) => {
+            if (!snapshot.exists()) return;
+            const settings = snapshot.data() as MenuSettings;
+            const currentVersion = settings.lastMenuUpdate || 0;
+
+            // First attachment: just record version, don't trigger
+            if (lastKnownVersion === null) {
+                lastKnownVersion = currentVersion;
+                return;
+            }
+
+            // Genuine update detected
+            if (currentVersion !== lastKnownVersion) {
+                console.log(`🔔 Menu update detected (v${lastKnownVersion} → v${currentVersion}). Invalidating cache...`);
+                invalidateCache(CACHE_KEYS.MENU_ITEMS);
+                invalidateCache(CACHE_KEYS.SETTINGS);
+                lastKnownVersion = currentVersion;
+                onUpdate();
+            }
+        },
+        (error) => {
+            console.error("Menu update subscription error:", error);
+            onError?.(error);
+        }
+    );
+};
+
 // --- Orders ---
 
 /**
@@ -93,17 +172,11 @@ export const getMenuSettings = async (): Promise<MenuSettings | null> => {
  * Used for calculating kitchen capacity and preparation times
  */
 export const getPendingOrdersCount = async (): Promise<number> => {
-    try {
-        const q = query(
-            collection(db, ORDERS_COLLECTION),
-            where('status', 'in', ['pending', 'preparing', 'ready'])
-        );
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.size;
-    } catch (error) {
-        console.error("Error counting pending orders:", error);
-        return 0;
-    }
+    // Guests do not have Firestore permission to read the global orders collection.
+    // To implement dynamic prep times in the future, a Cloud Function or admin backend
+    // should routinely aggregate this count and save it to the public `settings` document.
+    // For now, we return 0 to default to the baseline preparation time without throwing errors.
+    return 0;
 };
 
 /**
@@ -113,24 +186,5 @@ export const getPendingOrdersCount = async (): Promise<number> => {
  */
 export const calculatePreparationTime = (pendingOrdersCount: number): number => {
     return 30 + (pendingOrdersCount * 10);
-};
-
-/**
- * Place a new order with automatic preparation time calculation
- * Returns the order document reference and the expected preparation time
- */
-export const placeOrder = async (order: Omit<Order, 'id' | 'createdAt' | 'status' | 'expectedPreparationTime'>) => {
-    // Count current pending orders to calculate preparation time
-    const pendingCount = await getPendingOrdersCount();
-    const prepTime = calculatePreparationTime(pendingCount);
-    
-    const docRef = await addDoc(collection(db, ORDERS_COLLECTION), {
-        ...order,
-        status: 'pending',
-        expectedPreparationTime: prepTime,
-        createdAt: Timestamp.now()
-    });
-    
-    return { docRef, expectedPreparationTime: prepTime };
 };
 

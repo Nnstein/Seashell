@@ -1,17 +1,19 @@
 import React from 'react';
 import { MenuItem, Language } from '../src/types';
-import { Flame, Leaf, Nut, UtensilsCrossed, Tag, Percent } from 'lucide-react';
+import { Flame, Leaf, Nut, UtensilsCrossed, Tag, Percent, Clock } from 'lucide-react';
 import { getDiscountInfo, getBundleInfo, formatPrice } from '../utils/discountUtils';
+import { checkItemTimeAvailability } from '../utils/timeConstraints';
 
 interface MenuItemCardProps {
   item: MenuItem;
-  onAdd: (item: MenuItem, size?: string, addons?: string[], instructions?: string) => void;
+  onAdd: (item: MenuItem, quantity?: number, size?: string, addons?: string[], instructions?: string, pricingInfo?: any) => void;
   onCardClick?: (item: MenuItem) => void;
   theme: string;
   language: Language;
+  activeMenu: string | null;
 }
 
-const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language }) => {
+const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language, activeMenu }) => {
   // Helper to get localized string
   const getName = () => {
     if (typeof item.name === 'object' && item.name !== null) {
@@ -55,7 +57,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language
     }
   };
 
-  const isAvailable = item.isAvailable !== false; // Default to true if not specified
+  const timeAvailability = checkItemTimeAvailability(item, activeMenu);
+  const isAvailable = item.isAvailable !== false && timeAvailability.isAvailable;
 
   return (
     <div
@@ -64,11 +67,18 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, onCardClick, language
     >
       {/* Not Available Overlay */}
       {!isAvailable && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-          <div className="bg-white/90 px-3 py-1 sm:px-6 sm:py-2 rounded-full shadow-lg border-2 border-stone-300 transform -rotate-12">
-            <span className="text-stone-800 font-bold uppercase tracking-widest text-[10px] sm:text-lg">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+          <div className="bg-white/95 px-3 py-1 sm:px-6 sm:py-3 rounded-2xl sm:rounded-full shadow-2xl border-2 border-stone-300 flex flex-col items-center justify-center max-w-[90%] text-center transform -rotate-6">
+            {!timeAvailability.isAvailable && <Clock size={16} className="text-red-500 mb-1 sm:hidden" />}
+            {!timeAvailability.isAvailable && <Clock size={24} className="text-red-500 mb-1 hidden sm:block" />}
+            <span className="text-stone-800 font-bold uppercase tracking-widest text-[10px] sm:text-base mb-0.5">
               {language === 'ar' ? 'غير متوفر' : 'Not Available'}
             </span>
+            {!timeAvailability.isAvailable && timeAvailability.message && (
+              <span className="text-red-600 font-medium text-[8px] sm:text-xs">
+                {timeAvailability.message[language]}
+              </span>
+            )}
           </div>
         </div>
       )}

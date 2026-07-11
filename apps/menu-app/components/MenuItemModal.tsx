@@ -65,41 +65,60 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
     }, [item, selectedSize, selectedAddons]);
 
     // Calculate discount and bundle info
-    const discountInfo = getDiscountInfo(item.price, item.discountPrice, item.discountLabel);
+    const discountInfo = getDiscountInfo(item.price, item.discountPrice && item.discountPrice > 0 ? item.discountPrice : undefined, item.discountLabel);
     const bundleInfo = getBundleInfo(item.price, item.bundlePricing);
 
     // Use discounted price if available for unit price
-    const effectiveUnitPrice = discountInfo.hasDiscount ? discountInfo.finalPrice : currentPrice;
+    const effectiveUnitPrice = (discountInfo.hasDiscount && discountInfo.finalPrice > 0) ? discountInfo.finalPrice : (currentPrice > 0 ? currentPrice : item.price);
 
     // Calculate total price with bundle pricing applied
     const calculateTotalPrice = () => {
-        const unitPrice = effectiveUnitPrice;
+        let baseUnitPrice = (discountInfo.hasDiscount && discountInfo.finalPrice > 0) ? discountInfo.finalPrice : item.price;
+        if (item.sizes && selectedSize) {
+            const sizeObj = item.sizes.find(s => s.name === selectedSize);
+            if (sizeObj && sizeObj.price > 0) {
+                baseUnitPrice = sizeObj.price;
+            } else if (sizeObj && sizeObj.price === 0 && item.price > 0) {
+                // Fallback to base price if size is 0 but base is set
+                baseUnitPrice = item.price;
+            }
+        }
+
+        // Sanity check: If we somehow got 0 but the item has a catalog price, use the catalog price
+        if (baseUnitPrice <= 0 && item.price > 0) {
+            baseUnitPrice = item.price;
+        }
+
+        let addonsPrice = 0;
+        if (item.addons && selectedAddons.length > 0) {
+            item.addons.forEach(addon => {
+                if (selectedAddons.includes(addon.name)) addonsPrice += addon.price;
+            });
+        }
+
+        const totalUnitPrice = baseUnitPrice + addonsPrice;
 
         // Check if bundle pricing applies
         if (item.bundlePricing && item.bundlePricing.length > 0) {
             // Sort bundles by quantity descending to find best match
             const sortedBundles = [...item.bundlePricing].sort((a, b) => b.quantity - a.quantity);
 
-            let remainingQty = quantity;
-            let totalPrice = 0;
+            const appliedBundle = sortedBundles.find(b => quantity >= b.quantity);
+            if (appliedBundle && appliedBundle.price > 0) {
+                const bundleCount = Math.floor(quantity / appliedBundle.quantity);
+                const remainingQty = quantity % appliedBundle.quantity;
 
-            // Apply bundles from largest to smallest
-            for (const bundle of sortedBundles) {
-                if (remainingQty >= bundle.quantity) {
-                    const bundleCount = Math.floor(remainingQty / bundle.quantity);
-                    totalPrice += bundleCount * bundle.price;
-                    remainingQty -= bundleCount * bundle.quantity;
-                }
+                // Bundle base price + Addons for bundled items
+                const bundledCost = (bundleCount * appliedBundle.price) + (bundleCount * appliedBundle.quantity * addonsPrice);
+                // Remaining items normal price
+                const remainingCost = remainingQty * totalUnitPrice;
+
+                return bundledCost + remainingCost;
             }
-
-            // Add remaining items at unit price
-            totalPrice += remainingQty * unitPrice;
-
-            return totalPrice;
         }
 
         // No bundles, use regular pricing
-        return unitPrice * quantity;
+        return totalUnitPrice * quantity;
     };
 
     const totalPrice = calculateTotalPrice();
@@ -164,7 +183,11 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ item, isOpen, onClose, on
 
     const getImage = () => {
         if (item.images && item.images.length > 0) return item.images[0];
-        return item.imageUrl || item.image || `https://source.unsplash.com/featured/?food,${item.category}`;
+        if (item.imageUrl) return item.imageUrl;
+        if (item.image) return item.image;
+        // SECURITY: Unsplash source.unsplash.com is deprecated and an information-disclosure risk.
+        // Use a self-hosted SVG data URI as the fallback — no external dependency.
+        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f5f0e8'/%3E%3Ccircle cx='200' cy='130' r='60' fill='%23e2d5b7' opacity='0.6'/%3E%3Cpath d='M170 130 Q200 100 230 130 Q200 160 170 130Z' fill='%23c9a84c' opacity='0.7'/%3E%3Ccircle cx='200' cy='200' r='6' fill='%23c9a84c' opacity='0.4'/%3E%3Ctext x='200' y='255' text-anchor='middle' font-family='serif' font-size='14' fill='%23a89060' opacity='0.8'%3ENo Image Available%3C/text%3E%3C/svg%3E`;
     };
 
     const isRTL = language === 'ar';

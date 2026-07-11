@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ClipboardList, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ClipboardList, ChevronRight, History } from 'lucide-react';
 import { Theme } from '../src/types';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
@@ -22,24 +22,35 @@ const Header: React.FC<HeaderProps> = ({ theme }) => {
               {isRTL ? <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /> : <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           )}
-          <div className="cursor-pointer group flex flex-col items-center sm:items-start leading-none px-2" onClick={() => setView('HOME')}>
-            <span className="font-serif text-[10px] sm:text-xs italic text-white/90 group-hover:text-gold transition-all duration-300 transform group-hover:-translate-y-0.5">seashell</span>
-            <h1 className="font-sans text-xl sm:text-2xl font-bold tracking-widest text-white uppercase group-hover:text-gold transition-all duration-300 drop-shadow-md">F&B</h1>
+          <div className="cursor-pointer group flex items-center gap-2 px-2" onClick={() => setView('HOME')}>
+            <img src="assets/images/logo.png" alt="Seashell" className="h-10 sm:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105" />
           </div>
         </div>
 
-        <button
-          onClick={() => setIsCartOpen(true)}
-          className={`relative group flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl transition-all duration-300 ${theme.accentColor} text-white hover:brightness-110 ${animateCart ? 'scale-110 ring-4 ring-white/30' : ''}`}
-        >
-          <span className="font-medium text-xs sm:text-sm hidden sm:block tracking-wide">{UI_TEXT.myOrder[language]}</span>
-          <ClipboardList className={`w-4 h-4 sm:w-5 sm:h-5 ${animateCart ? 'animate-bounce' : ''}`} />
-          {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-white text-stone-900 text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shadow-sm">
-              {cartCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Order History Button */}
+          <button
+            onClick={() => setView('ORDER_HISTORY')}
+            className="relative group flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 text-white transition-all duration-300"
+            title={language === 'ar' ? 'سجل الطلبات' : 'Order History'}
+          >
+            <History className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Cart Button */}
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className={`relative group flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-full shadow-xl transition-all duration-300 ${theme.accentColor} text-white hover:brightness-110 ${animateCart ? 'scale-110 ring-4 ring-white/30' : ''}`}
+          >
+            <span className="font-medium text-xs sm:text-sm hidden sm:block tracking-wide">{UI_TEXT.myOrder[language]}</span>
+            <ClipboardList className={`w-4 h-4 sm:w-5 sm:h-5 ${animateCart ? 'animate-bounce' : ''}`} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-white text-stone-900 text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shadow-sm">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </header>
   );

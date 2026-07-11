@@ -2,22 +2,111 @@ import React, { useState } from 'react';
 import { ArrowRight, Globe, KeyRound, Phone } from 'lucide-react';
 import { UI_TEXT } from '../data';
 import { useApp } from '../context/AppContext';
+import { useToast } from './Toast';
+import { normalizePhone, validateDynamicSection } from '../utils/validation';
+import { getSections } from '../services/firestoreService';
+import { LocationSection } from '../src/types';
 
-const LandingPage: React.FC = () => {
-  const { language, toggleLanguage, setView, setRoomNumber, setPhoneNumber, saveSession } = useApp();
+interface LandingPageProps {
+  isBeachMode?: boolean;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ isBeachMode = false }) => {
+  const { 
+    language, 
+    toggleLanguage, 
+    setView, 
+    setRoomNumber, 
+    setPhoneNumber, 
+    saveSession, 
+    clearCart, 
+    restoreCartForSession,
+    setActiveMenu 
+  } = useApp();
+  const { showError } = useToast();
+  
   const [inputRoom, setInputRoom] = useState('');
   const [inputPhone, setInputPhone] = useState('');
-  const [error, setError] = useState(false);
+  const [roomError, setRoomError] = useState(false);
+  const [phoneError, setPhoneError] = useState(false);
+  const [sections, setSections] = useState<LocationSection[]>([]);
   const isRTL = language === 'ar';
 
+  React.useEffect(() => {
+    getSections().then(setSections);
+  }, []);
+
+  // Find matching section based on current input to determine if phone is required
+  const requiresPhone = React.useMemo(() => {
+    if (sections.length === 0) return true;
+    
+    const availableSections = sections.filter(s => 
+      isBeachMode ? s.menu === 'seashell' : s.menu !== 'seashell'
+    );
+    
+    const trimmed = inputRoom.trim().toUpperCase();
+    const match = trimmed.match(/^([A-Z]*)/);
+    
+    if (match) {
+      const prefix = match[1];
+      let matchedSection;
+      
+      if (prefix === '') {
+        matchedSection = availableSections.find(s => s.isDefault);
+      } else {
+        matchedSection = availableSections.find(s => s.prefix.toUpperCase() === prefix);
+      }
+      
+      if (matchedSection) {
+        return matchedSection.requiresPhone;
+      }
+    }
+    
+    return true; // Default to true if we can't figure it out yet
+  }, [inputRoom, sections, isBeachMode]);
+
   const handleLogin = () => {
-    if (!inputRoom.trim() || !inputPhone.trim()) {
-      setError(true);
+    setRoomError(false);
+    setPhoneError(false);
+
+    if (sections.length === 0) {
+       showError('Loading sections, please try again...');
+       return;
+    }
+
+    const validation = validateDynamicSection(inputRoom, sections, isBeachMode);
+    
+    if (!validation.valid || !validation.section) {
+      setRoomError(true);
+      showError(validation.error || 'Invalid location code');
       return;
     }
-    setRoomNumber(inputRoom);
-    setPhoneNumber(inputPhone);
-    saveSession(inputRoom, inputPhone); // Save session to localStorage
+
+    const matchedSection = validation.section;
+    const selectedMenu = matchedSection.menu;
+    const finalRoom = validation.normalized;
+    let finalPhone = '00000000';
+
+    if (matchedSection.requiresPhone) {
+      const phoneResult = normalizePhone(inputPhone);
+      if (!phoneResult.valid) {
+        setPhoneError(true);
+        showError(phoneResult.error || 'Invalid phone number');
+        return;
+      }
+      finalPhone = phoneResult.normalized;
+    }
+
+    // Clear any leftover cart
+    clearCart();
+
+    // Set Session State
+    setRoomNumber(finalRoom);
+    setPhoneNumber(finalPhone);
+    setActiveMenu(selectedMenu);
+
+    saveSession(finalRoom, finalPhone);
+    restoreCartForSession(finalRoom);
     setView('MENU');
   };
 
@@ -39,58 +128,68 @@ const LandingPage: React.FC = () => {
           </button>
         </div>
 
-        <h1 className="flex flex-col items-center justify-center font-bold text-white mb-6 drop-shadow-2xl leading-none">
-          <span className="text-2xl xs:text-3xl md:text-4xl font-serif italic mb-2 text-gold">seashell</span>
-          <span className="text-5xl xs:text-6xl md:text-8xl tracking-widest uppercase font-sans">F&B</span>
-        </h1>
+        <div className="mb-8 flex justify-center animate-fade-in-up">
+           <img 
+             src="assets/images/logo.png" 
+             alt="Seashell Logo" 
+             className="w-32 xs:w-40 md:w-56 h-auto object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" 
+           />
+        </div>
 
         {/* Login Form */}
         <div className="flex flex-col items-center gap-4 max-w-md mx-auto animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
 
           {/* Prompt */}
           <p className="text-stone-200 text-lg font-medium tracking-wide drop-shadow-md mb-1 opacity-90">
-            {UI_TEXT.enterRoomPrompt[language]}
+            {isBeachMode 
+              ? (language === 'en' ? 'Enter Location Code' : 'أدخل رمز الموقع')
+              : (language === 'en' ? 'Enter Room / Location Code' : 'أدخل رقم الغرفة / رمز الموقع')
+            }
           </p>
 
-          {/* Room Number Input */}
+          {/* Primary ID Input (Room / Sunbed / Presto) */}
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/60">
               <KeyRound size={20} />
             </div>
             <input
               type="text"
-              placeholder={UI_TEXT.enterRoom[language]}
+              placeholder={
+                isBeachMode ? 'e.g. SB1, GB5' : 'e.g. 101, P1'
+              }
               value={inputRoom}
               onChange={(e) => {
                 setInputRoom(e.target.value);
-                setError(false);
+                setRoomError(false);
               }}
               className={`
                  w-full bg-white/10 backdrop-blur-md border-2 rounded-full py-4 px-12 text-white placeholder-white/50 focus:outline-none focus:border-gold/80 text-lg transition-colors
-                 ${error && !inputRoom ? 'border-red-500/80' : 'border-white/20'}
+                 ${roomError ? 'border-red-500/80' : 'border-white/20'}
                `}
             />
           </div>
 
-          {/* Phone Number Input */}
-          <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/60">
-              <Phone size={20} />
+          {/* Phone Number Input - Dynamically hidden if section doesn't require it */}
+          {requiresPhone && (
+            <div className="relative w-full animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/60">
+                <Phone size={20} />
+              </div>
+              <input
+                type="tel"
+                placeholder={UI_TEXT.enterPhone[language]}
+                value={inputPhone}
+                onChange={(e) => {
+                  setInputPhone(e.target.value);
+                  setPhoneError(false);
+                }}
+                className={`
+                   w-full bg-white/10 backdrop-blur-md border-2 rounded-full py-4 px-12 text-white placeholder-white/50 focus:outline-none focus:border-gold/80 text-lg transition-colors
+                   ${phoneError ? 'border-red-500/80' : 'border-white/20'}
+                 `}
+              />
             </div>
-            <input
-              type="tel"
-              placeholder={UI_TEXT.enterPhone[language]}
-              value={inputPhone}
-              onChange={(e) => {
-                setInputPhone(e.target.value);
-                setError(false);
-              }}
-              className={`
-                 w-full bg-white/10 backdrop-blur-md border-2 rounded-full py-4 px-12 text-white placeholder-white/50 focus:outline-none focus:border-gold/80 text-lg transition-colors
-                 ${error && !inputPhone ? 'border-red-500/80' : 'border-white/20'}
-               `}
-            />
-          </div>
+          )}
 
           <button
             onClick={handleLogin}
@@ -103,6 +202,17 @@ const LandingPage: React.FC = () => {
               <ArrowRight size={24} />
             </div>
           </button>
+          
+          {/* Helpful Hint */}
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
+            {sections
+              .filter(s => isBeachMode ? s.menu === 'seashell' : s.menu !== 'seashell')
+              .map(s => (
+              <span key={s.id} className="text-white/40 text-[10px] uppercase tracking-widest">
+                {s.name}: {s.prefix}{s.padLength > 0 ? '1'.padStart(s.padLength, '0') : (s.prefix ? '1' : '101')}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 

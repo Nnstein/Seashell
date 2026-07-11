@@ -39,7 +39,7 @@ export const ToastProvider = ({ children }: PropsWithChildren) => {
     }, [removeToast]);
 
     const showSuccess = useCallback((message: string) => showToast(message, 'success'), [showToast]);
-    const showError = useCallback((message: string) => showToast(message, 'error', 6000), [showToast]);
+    const showError = useCallback((message: string) => showToast(message, 'error', 5000), [showToast]);
     const showWarning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
     const showInfo = useCallback((message: string) => showToast(message, 'info'), [showToast]);
 
@@ -80,7 +80,7 @@ export const ToastProvider = ({ children }: PropsWithChildren) => {
                         <div className="flex-shrink-0 mt-0.5">
                             {getIcon(toast.type)}
                         </div>
-                        <p className="flex-1 text-sm font-medium">{toast.message}</p>
+                        <p className="flex-1 text-sm font-medium whitespace-pre-line">{toast.message}</p>
                         <button
                             onClick={() => removeToast(toast.id)}
                             className="flex-shrink-0 p-1 rounded-full hover:bg-black/10 transition-colors"
